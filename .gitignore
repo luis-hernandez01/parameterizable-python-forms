@@ -1,0 +1,16 @@
+__pycache__/
+.pytest_cache/
+uploads/
+
+
+/venv/
+# O365 credentials
+o365_token.txt
+
+# Environments
+.env
+.env.test
+
+.flake8
+.pre-commit-config.yaml
+pyproject.toml
