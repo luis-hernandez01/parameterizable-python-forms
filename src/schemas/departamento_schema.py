@@ -4,27 +4,27 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
-class UnidadEjecutoraSchema(BaseModel):
+class DepartamentoSchema(BaseModel):
     nombre: str
-    descripcion: Optional[str]
+    codigo_dane: Optional[str]
 
 
-class UnidadEjecutoraCreate(UnidadEjecutoraSchema):
+class DepartamentoCreate(DepartamentoSchema):
     pass
 
 
-class UnidadEjecutoraUpdate(UnidadEjecutoraSchema):
+class DepartamentoUpdate(DepartamentoSchema):
     pass
 
 
-class UnidadEjecutoraResponse(UnidadEjecutoraSchema):
+class DepartamentoResponse(DepartamentoSchema):
     id: int
 
 
 class LogEntityRead(BaseModel):
     id: int
     nombre: str
-    descripcion: Optional[str]
+    codigo_dane: Optional[str]
     id_persona: int
     activo: bool
     created_at: datetime
@@ -42,6 +42,6 @@ class PaginacionSchema(BaseModel):
     pages: int
 
 
-class UnidadEjecutoraListResponse(BaseModel):
-    data: List[UnidadEjecutoraSchema]
+class DepartamentoListResponse(BaseModel):
+    data: List[DepartamentoSchema]
     pagination: PaginacionSchema

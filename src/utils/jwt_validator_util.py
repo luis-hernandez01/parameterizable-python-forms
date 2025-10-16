@@ -1,11 +1,14 @@
-from jose import jwt, JWTError
-from fastapi import HTTPException, status, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
-from src.config.config import SECRET_KEY, ALGORITHM
+
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+
+from src.config.config import ALGORITHM, SECRET_KEY
 
 # Esquema de seguridad para leer el token del header "Authorization: Bearer <token>"
 security = HTTPBearer()
+
 
 def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
@@ -15,7 +18,7 @@ def verify_jwt_token(credentials: HTTPAuthorizationCredentials = Depends(securit
     try:
         # Decodificar el token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        
+
         exp = payload.get("exp")
         # Validar expiración
         if datetime.utcnow().timestamp() > exp:
@@ -42,4 +45,5 @@ def require_permission(required_permission: str):
         perms = payload.get("permissions")
         if not perms or required_permission not in perms:
             raise HTTPException(status_code=403, detail="Permiso insuficiente")
+
     return _checker

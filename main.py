@@ -3,9 +3,23 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
 
-# directorios de rutas 
-from src.routes import unidad_ejecutora_route
 from src.config.config import Base, engine
+
+# directorios de rutas
+from src.routes import (
+    categorizacion_route,
+    clasificaciones_proyecto_route,
+    departamento_route,
+    direccion_territorial_route,
+    funcionalidades_carreteras_route,
+    modo_route,
+    municipio_route,
+    profesion_route,
+    rutas_viales_route,
+    tipos_proyectos_route,
+    tramo_route,
+    unidad_ejecutora_route,
+)
 
 # # --- Crear tablas en todas las bases parametrizadas ---
 for engines in engine:
@@ -35,7 +49,56 @@ app.add_middleware(
 
 # registrando mis rutas existentes de las difrentes APIs
 # Aquí se incluyen las rutas definidas en la carpeta 'routes'.
-app.include_router(unidad_ejecutora_route.router, prefix="/unidad_ejecutora", tags=["Unidad ejecutora"])
+
+app.include_router(
+    municipio_route.router,
+    prefix="/minicipio",
+    tags=["municipios"],
+)
+
+app.include_router(
+    departamento_route.router,
+    prefix="/departamento",
+    tags=["Departamentos"],
+)
+
+app.include_router(
+    profesion_route.router,
+    prefix="/profesion",
+    tags=["Profesion"],
+)
+
+app.include_router(
+    direccion_territorial_route.router,
+    prefix="/direccion_territorial",
+    tags=["Direccion territorial"],
+)
+app.include_router(
+    tipos_proyectos_route.router, prefix="/tipos_proyectos", tags=["Tipos de proyectos"]
+)
+
+app.include_router(tramo_route.router, prefix="/tramos", tags=["Tramos"])
+app.include_router(
+    categorizacion_route.router, prefix="/categorizacion", tags=["Categorización"]
+)
+app.include_router(
+    rutas_viales_route.router, prefix="/rutas_viales", tags=["Rutas viales"]
+)
+
+app.include_router(
+    unidad_ejecutora_route.router, prefix="/unidad_ejecutora", tags=["Unidad ejecutora"]
+)
+app.include_router(
+    clasificaciones_proyecto_route.router,
+    prefix="/clasificaciones_proyecto",
+    tags=["Clasificacion proyectos"],
+)
+app.include_router(
+    funcionalidades_carreteras_route.router,
+    prefix="/funcionalidades_carreteras",
+    tags=["Funcionalidades carretera"],
+)
+app.include_router(modo_route.router, prefix="/modo", tags=["Modo"])
 
 
 #  Documentación con Swagger/OpenAPI
