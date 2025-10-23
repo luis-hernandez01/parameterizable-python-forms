@@ -8,6 +8,8 @@ class MunicipioSchema(BaseModel):
     nombre: str
     id_departamento: int
     codigo_dane: Optional[str]
+    # departamento: Optional[str]
+
 
 
 class municipioCreate(MunicipioSchema):

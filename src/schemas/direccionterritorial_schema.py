@@ -3,14 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 
 class DireccionTerritorialSchema(BaseModel):
+    id: int
     nombre: str
-    region: Optional[str]
 
-class DireccionTerritorialCreate(DireccionTerritorialSchema):
-    pass
+class DireccionTerritorialCreate(BaseModel):
+    nombre: str
 
-class DireccionTerritorialUpdate(DireccionTerritorialSchema):
-    pass
+class DireccionTerritorialUpdate(BaseModel):
+    nombre: str
 
 class DireccionTerritorialResponse(DireccionTerritorialSchema):
     id: int
@@ -18,7 +18,6 @@ class DireccionTerritorialResponse(DireccionTerritorialSchema):
 class LogEntityRead(BaseModel):
     id: int
     nombre: str
-    region: Optional[str]
     id_persona: int
     activo: bool
     created_at: datetime

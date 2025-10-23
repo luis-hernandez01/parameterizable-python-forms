@@ -19,6 +19,9 @@ from src.routes import (
     tipos_proyectos_route,
     tramo_route,
     unidad_ejecutora_route,
+    migrador_route,
+    proyecto_route,
+    contratos_route
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
@@ -50,10 +53,14 @@ app.add_middleware(
 # registrando mis rutas existentes de las difrentes APIs
 # Aquí se incluyen las rutas definidas en la carpeta 'routes'.
 
+app.include_router(migrador_route.router, prefix="/migrar", tags=["Migrar"])
+
+
+
 app.include_router(
     municipio_route.router,
-    prefix="/minicipio",
-    tags=["municipios"],
+    prefix="/municipio",
+    tags=["Municipios"],
 )
 
 app.include_router(
@@ -99,6 +106,18 @@ app.include_router(
     tags=["Funcionalidades carretera"],
 )
 app.include_router(modo_route.router, prefix="/modo", tags=["Modo"])
+
+app.include_router(
+    proyecto_route.router,
+    prefix="/proyecto",
+    tags=["Proyecto"],
+)
+
+app.include_router(
+    contratos_route.router,
+    prefix="/contratos",
+    tags=["Contratos"],
+)
 
 
 #  Documentación con Swagger/OpenAPI

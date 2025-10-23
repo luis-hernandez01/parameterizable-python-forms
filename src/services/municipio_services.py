@@ -14,8 +14,33 @@ class MunicipioService:
 # servicio para listar  los registros
     def list_municipio(self, skip: int, limit: int):
         return self.db.query(Municipio).filter(Municipio.activo == True).offset(skip).limit(limit).all()
+    
+    # este codigo comentado es para mostrar el valor del campo nombre
+    # de la tabla foranea
+    # en el schema se debe de agregar el nombre de la relacion
+    
+    # def list_municipio(self, skip: int, limit: int):
+    #     municipios = (
+    #         self.db.query(Municipio)
+    #         .join(Municipio.departamento)
+    #         .filter(Municipio.activo == True)
+    #         .offset(skip)
+    #         .limit(limit)
+    #         .all()
+    #     )
+    #     return [
+    #         {
+    #             "nombre": m.nombre,
+    #             "id_departamento": m.departamento.id if m.departamento else None,
+    #             "codigo_dane": m.codigo_dane,
+    #             "departamento": m.departamento.nombre if m.departamento else None
+    #         }
+    #         for m in municipios
+    #     ]
+    
     def count_municipio(self):
         return self.db.query(Municipio).filter(Municipio.activo == True).count()
+    
     
     
     # servicio para crear un registro

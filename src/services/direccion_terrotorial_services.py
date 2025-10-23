@@ -31,7 +31,7 @@ class DireccionterritorialService:
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
         
-        entity = DireccionesTerritoriales(nombre=payload.nombre, region=payload.region,
+        entity = DireccionesTerritoriales(nombre=payload.nombre,
                                         id_persona=tokenpayload.get("sub"), 
                                         activo=True, created_at=datetime.utcnow())
         self.db.add(entity)
@@ -94,7 +94,6 @@ class DireccionterritorialService:
 
         if dataupdate:
             dataupdate.nombre = payload.nombre
-            dataupdate.region = payload.region
             dataupdate.id_persona = tokenpayload.get("sub")
             dataupdate.updated_at = datetime.utcnow()
             self.db.commit()

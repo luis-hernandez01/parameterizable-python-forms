@@ -6,7 +6,6 @@ class DireccionesTerritoriales(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment="Identificador único de la dirección territorial")
     nombre = Column(String(255), unique=True, nullable=False, comment="Nombre de la dirección territorial")
-    region = Column(Text, nullable=True, comment="Región geográfica a la que pertenece")
     id_persona = Column(Integer, nullable=True, comment="ID de la persona que creó o modificó el registro")
     activo = Column(Boolean, nullable=False, default=True, comment="Indica si el registro está activo (true) o inactivo (false)")
     
