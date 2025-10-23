@@ -36,14 +36,18 @@ app = FastAPI(title="Servicios parametrizables", version="1.0.0")
 # un frontend en Angular o React)
 # puedan comunicarse con esta API.
 # CORS: ajusta a tus orígenes reales
+
+allow_origins=[
+    "http://localhost:4200",
+    "https://parametrizable-forms.onrender.com"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    # Tdos los servicios que envien una peticion tendran permisos
-    allow_credentials=True,  # Permitir envío de cookies/autenticación
-    allow_methods=["*"
-    ],  # se le esta dando permisos a todos los metodos existentes
-    allow_headers=["*"],  # Headers personalizados permitidos
+    allow_origins=allow_origins,           # ⚠️ Permitir todos los orígenes (solo para desarrollo)
+    allow_credentials=True,        # Permitir envío de cookies/autenticación
+    allow_methods=["*"],           # Permitir todos los métodos HTTP (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],           # Permitir todos los encabezados personalizados
 )
 
 # registrando mis rutas existentes de las difrentes APIs
