@@ -11,6 +11,13 @@ class TiposProyectosService:
     def __init__(self, db: Session):
         self.db = db
         
+    async def all(self):
+        return (
+            self.db.query(TiposProyecto)
+            .filter(TiposProyecto.activo == True)
+            .all()
+        )
+        
 # servicio para listar  los registros
     def list_tipos(self, skip: int, limit: int):
         return self.db.query(TiposProyecto).filter(TiposProyecto.activo == True).offset(skip).limit(limit).all()

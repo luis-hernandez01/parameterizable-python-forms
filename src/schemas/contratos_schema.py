@@ -11,6 +11,7 @@ class TipoContratoEnum(str, enum.Enum):
     convenio = "convenio"
 
 class ContratoSchema(BaseModel):
+    id: int
     id_proyecto: Optional[int]
     numero_contrato: str
     tipo_contrato: TipoContratoEnum
@@ -34,11 +35,27 @@ class ContratoSchema(BaseModel):
     
 
 
-class ContratoCreate(ContratoSchema):
-    pass
+class ContratoCreate(BaseModel):
+    id_proyecto: Optional[int]
+    numero_contrato: str
+    tipo_contrato: TipoContratoEnum
+    fecha_contrato: Optional[date]
+    objeto_contrato: Optional[str]
+    fecha_inicio: Optional[date]
+    fecha_terminacion: Optional[date]
+    valor_contrato: Optional[Decimal]
+    recursos_sostenibilidad: Optional[Decimal]
 
-class ContratoUpdate(ContratoSchema):
-    pass
+class ContratoUpdate(BaseModel):
+    id_proyecto: Optional[int]
+    numero_contrato: str
+    tipo_contrato: TipoContratoEnum
+    fecha_contrato: Optional[date]
+    objeto_contrato: Optional[str]
+    fecha_inicio: Optional[date]
+    fecha_terminacion: Optional[date]
+    valor_contrato: Optional[Decimal]
+    recursos_sostenibilidad: Optional[Decimal]
 
 class ContratoResponse(ContratoSchema):
     id: int

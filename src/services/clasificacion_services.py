@@ -11,6 +11,13 @@ class clasificacionService:
     def __init__(self, db: Session):
         self.db = db
         
+    async def all(self):
+        return (
+            self.db.query(ClasificacionesProyecto)
+            .filter(ClasificacionesProyecto.activo == True)
+            .all()
+        )
+        
 # servicio para listar  los registros
     def list_clasificacion_proyecto(self, skip: int, limit: int):
         return self.db.query(ClasificacionesProyecto).filter(ClasificacionesProyecto.activo == True).offset(skip).limit(limit).all()

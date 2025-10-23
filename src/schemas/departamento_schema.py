@@ -5,16 +5,19 @@ from pydantic import BaseModel, ConfigDict
 
 
 class DepartamentoSchema(BaseModel):
+    id: int
     nombre: str
     codigo_dane: Optional[str]
 
 
-class DepartamentoCreate(DepartamentoSchema):
-    pass
+class DepartamentoCreate(BaseModel):
+    nombre: str
+    codigo_dane: Optional[str]
 
 
-class DepartamentoUpdate(DepartamentoSchema):
-    pass
+class DepartamentoUpdate(BaseModel):
+    nombre: str
+    codigo_dane: Optional[str]
 
 
 class DepartamentoResponse(DepartamentoSchema):

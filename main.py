@@ -41,11 +41,7 @@ app.add_middleware(
     allow_origins=["*"],
     # Tdos los servicios que envien una peticion tendran permisos
     allow_credentials=True,  # Permitir envío de cookies/autenticación
-    allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
+    allow_methods=["*"
     ],  # se le esta dando permisos a todos los metodos existentes
     allow_headers=["*"],  # Headers personalizados permitidos
 )

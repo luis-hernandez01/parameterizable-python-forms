@@ -30,15 +30,15 @@ ALGORITHM = os.getenv("ALGORITHM")
 
 # # --- Configura las URLs dinámicamente ---
 DB_CONFIGS = [
-    f"postgresql+psycopg2://notifications:ka8z53PkKZE5uNmCAOyVA2nMbiHNpWE3"
-    f"@dpg-d3d8c3jipnbc73fck58g-a.frankfurt-postgres.render.com/notifications_si78",
-    f"postgresql+psycopg2://root:9vUcmw7EWU4W3fdqfaK4nZ7ggtJ22Bu7"
-    f"@dpg-d3ogh1ili9vc73c52m3g-a.oregon-postgres.render.com/wayra",
+    # f"postgresql+psycopg2://notifications:ka8z53PkKZE5uNmCAOyVA2nMbiHNpWE3"
+    # f"@dpg-d3d8c3jipnbc73fck58g-a.frankfurt-postgres.render.com/notifications_si78",
+    # f"postgresql+psycopg2://root:9vUcmw7EWU4W3fdqfaK4nZ7ggtJ22Bu7"
+    # f"@dpg-d3ogh1ili9vc73c52m3g-a.oregon-postgres.render.com/wayra",
     
-    # f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-    # f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}",
-    # f"postgresql+psycopg2://{POSTGRES_USER1}:{POSTGRES_PASSWORD1}"
-    # f"@{POSTGRES_HOST1}:{POSTGRES_PORT1}/{POSTGRES_DB1}",
+    f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}",
+    f"postgresql+psycopg2://{POSTGRES_USER1}:{POSTGRES_PASSWORD1}"
+    f"@{POSTGRES_HOST1}:{POSTGRES_PORT1}/{POSTGRES_DB1}",
 ]
 
 # # --- Crear engines y sesiones dinámicamente ---

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from src.config.config import get_session
 from src.schemas.unidad_ejecutora_schema import (
+    UnidadEjecutoraSchema,
     UnidadEjecutoraCreate,
     UnidadEjecutoraListResponse,
     UnidadEjecutoraUpdate,
@@ -15,6 +16,18 @@ from src.utils.jwt_validator_util import verify_jwt_token
 # inicializacion del roter
 router = APIRouter()
 
+
+# mostrar todo 
+
+@router.get("/all")
+async def list_all(
+    # de esta manera llamo solamente la primera base de datos
+    db: Session = Depends(lambda: next(get_session(0))),
+    tokenpayload: dict = Depends(verify_jwt_token),
+):
+    return await UnidadEjecutoraService(db).all()
+    
+    
 
 # endpoint de listar data con paginacion incluida
 @router.get("/", response_model=UnidadEjecutoraListResponse)

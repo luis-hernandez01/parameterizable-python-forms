@@ -3,13 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 
 class categorizacionchema(BaseModel):
+    id: int
     nombre: str
 
-class categorizacionCreate(categorizacionchema):
-    pass
+class categorizacionCreate(BaseModel):
+    nombre: str
 
-class categorizacionUpdate(categorizacionchema):
-    pass
+class categorizacionUpdate(BaseModel):
+    nombre: str
 
 class categorizacionResponse(categorizacionchema):
     id: int

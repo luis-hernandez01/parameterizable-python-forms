@@ -13,6 +13,14 @@ from src.utils.logs_util import LogUtil, registrar_log
 class UnidadEjecutoraService:
     def __init__(self, db: Session):
         self.db = db
+    
+    
+    async def all(self):
+        return (
+            self.db.query(UnidadEjecutora)
+            .filter(UnidadEjecutora.activo == True)
+            .all()
+        )
 
     # servicio para listar  los registros
     def list_unidad_ejecutora(self, skip: int, limit: int):

@@ -11,6 +11,13 @@ class ContratoService:
     def __init__(self, db: Session):
         self.db = db
         
+    async def all(self):
+        return (
+            self.db.query(Contrato)
+            .filter(Contrato.activo == True)
+            .all()
+        )
+        
 # servicio para listar  los registros
     def list_contrato(self, skip: int, limit: int):
         return self.db.query(Contrato).filter(Contrato.activo == True).offset(skip).limit(limit).all()

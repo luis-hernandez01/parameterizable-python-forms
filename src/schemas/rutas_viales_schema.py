@@ -3,14 +3,15 @@ from typing import List, Optional
 from datetime import datetime
 
 class RutasSchema(BaseModel):
+    id: int
     nombre: str
     codigo: Optional[str]
 
-class RutasCreate(RutasSchema):
-    pass
+class RutasCreate(BaseModel):
+    codigo: Optional[str]
 
-class RutasUpdate(RutasSchema):
-    pass
+class RutasUpdate(BaseModel):
+    codigo: Optional[str]
 
 class RutasResponse(RutasSchema):
     id: int

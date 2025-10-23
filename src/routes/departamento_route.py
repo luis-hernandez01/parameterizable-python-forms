@@ -12,6 +12,15 @@ from src.utils.jwt_validator_util import verify_jwt_token
 # inicializacion del roter
 router = APIRouter()
 
+
+@router.get("/all")
+async def list_all(
+    # de esta manera llamo solamente la primera base de datos
+    db: Session = Depends(lambda: next(get_session(0))),
+    tokenpayload: dict = Depends(verify_jwt_token),
+):
+    return await DepartamentoService(db).all()
+
 # endpoint de listar data con paginacion incluida
 @router.get("/", response_model=DepartamentoListResponse)
 def lista(

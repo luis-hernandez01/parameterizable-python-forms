@@ -3,13 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 
 class funcionalidades_carreteraSchema(BaseModel):
+    id: int
     nombre: str
 
-class funcionalidades_carreteraCreate(funcionalidades_carreteraSchema):
-    pass
+class funcionalidades_carreteraCreate(BaseModel):
+    nombre: str
 
-class funcionalidades_carreteraUpdate(funcionalidades_carreteraSchema):
-    pass
+class funcionalidades_carreteraUpdate(BaseModel):
+    nombre: str
 
 class funcionalidades_carreteraResponse(funcionalidades_carreteraSchema):
     id: int

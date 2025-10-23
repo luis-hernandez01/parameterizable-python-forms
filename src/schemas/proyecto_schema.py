@@ -3,6 +3,7 @@ from typing import List, Optional
 from datetime import datetime, date
 
 class Pyoyectochema(BaseModel):
+    id: int
     id_unidad_ejecutora: Optional[int]
     id_direccion_territorial: Optional[int]
     id_tipo_proyecto: Optional[int]
@@ -18,11 +19,37 @@ class Pyoyectochema(BaseModel):
     es_convenio_interadministrativo: Optional[bool] = False
     numero_convenio: Optional[str]
 
-class proyectoCreate(Pyoyectochema):
-    pass
+class proyectoCreate(BaseModel):
+    id_unidad_ejecutora: Optional[int]
+    id_direccion_territorial: Optional[int]
+    id_tipo_proyecto: Optional[int]
+    id_ruta: Optional[int]
+    id_tramo_sector: Optional[int]
+    id_clasificacion: Optional[int]
+    id_modo_transporte: Optional[int]
+    id_funcionalidad: Optional[int]
+    id_categorizacion: Optional[int]
+    objeto_proyecto: Optional[str]
+    resolucion_licencia: Optional[str]
+    fecha_resolucion: Optional[date]
+    es_convenio_interadministrativo: Optional[bool] = False
+    numero_convenio: Optional[str]
 
-class ProyectoUpdate(Pyoyectochema):
-    pass
+class ProyectoUpdate(BaseModel):
+    id_unidad_ejecutora: Optional[int]
+    id_direccion_territorial: Optional[int]
+    id_tipo_proyecto: Optional[int]
+    id_ruta: Optional[int]
+    id_tramo_sector: Optional[int]
+    id_clasificacion: Optional[int]
+    id_modo_transporte: Optional[int]
+    id_funcionalidad: Optional[int]
+    id_categorizacion: Optional[int]
+    objeto_proyecto: Optional[str]
+    resolucion_licencia: Optional[str]
+    fecha_resolucion: Optional[date]
+    es_convenio_interadministrativo: Optional[bool] = False
+    numero_convenio: Optional[str]
 
 class ProyectoResponse(Pyoyectochema):
     id: int

@@ -3,14 +3,17 @@ from typing import List, Optional
 from datetime import datetime
 
 class TiposproyectosSchema(BaseModel):
+    id: int
     nombre: str
     requiere_licencia: bool
 
-class TiposproyectosCreate(TiposproyectosSchema):
-    pass
+class TiposproyectosCreate(BaseModel):
+    nombre: str
+    requiere_licencia: bool
 
-class TiposproyectosUpdate(TiposproyectosSchema):
-    pass
+class TiposproyectosUpdate(BaseModel):
+    nombre: str
+    requiere_licencia: bool
 
 class TiposproyectosResponse(TiposproyectosSchema):
     id: int

@@ -3,13 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 
 class ClasificacionProyectoSchema(BaseModel):
+    id: int
     nombre: str
 
-class ClasificacionProyectoCreate(ClasificacionProyectoSchema):
-    pass
+class ClasificacionProyectoCreate(BaseModel):
+    nombre: str
 
-class ClasificacionProyectoUpdate(ClasificacionProyectoSchema):
-    pass
+class ClasificacionProyectoUpdate(BaseModel):
+    nombre: str
 
 class UnidadEjecutoraResponse(ClasificacionProyectoSchema):
     id: int

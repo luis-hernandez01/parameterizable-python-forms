@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class MunicipioSchema(BaseModel):
+    id: int
     nombre: str
     id_departamento: int
     codigo_dane: Optional[str]
@@ -12,12 +13,16 @@ class MunicipioSchema(BaseModel):
 
 
 
-class municipioCreate(MunicipioSchema):
-    pass
+class municipioCreate(BaseModel):
+    nombre: str
+    id_departamento: int
+    codigo_dane: Optional[str]
 
 
-class MunicipioUpdate(MunicipioSchema):
-    pass
+class MunicipioUpdate(BaseModel):
+    nombre: str
+    id_departamento: int
+    codigo_dane: Optional[str]
 
 
 class MunicipioResponse(MunicipioSchema):

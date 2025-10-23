@@ -10,6 +10,13 @@ from src.utils.logs_util import registrar_log, LogUtil
 class DepartamentoService:
     def __init__(self, db: Session):
         self.db = db
+    
+    async def all(self):
+        return (
+            self.db.query(Departamento)
+            .filter(Departamento.activo == True)
+            .all()
+        )
         
 # servicio para listar  los registros
     def list_departamento(self, skip: int, limit: int):

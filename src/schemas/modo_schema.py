@@ -3,13 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 
 class ModoSchema(BaseModel):
+    id: int
     nombre: str
 
-class ModoCreate(ModoSchema):
-    pass
+class ModoCreate(BaseModel):
+    nombre: str
 
-class ModoUpdate(ModoSchema):
-    pass
+class ModoUpdate(BaseModel):
+    nombre: str
 
 class ModoResponse(ModoSchema):
     id: int

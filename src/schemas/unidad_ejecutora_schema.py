@@ -5,16 +5,19 @@ from pydantic import BaseModel, ConfigDict
 
 
 class UnidadEjecutoraSchema(BaseModel):
+    id: int
     nombre: str
     descripcion: Optional[str]
 
 
-class UnidadEjecutoraCreate(UnidadEjecutoraSchema):
-    pass
+class UnidadEjecutoraCreate(BaseModel):
+    nombre: str
+    descripcion: Optional[str]
 
 
-class UnidadEjecutoraUpdate(UnidadEjecutoraSchema):
-    pass
+class UnidadEjecutoraUpdate(BaseModel):
+    nombre: str
+    descripcion: Optional[str]
 
 
 class UnidadEjecutoraResponse(UnidadEjecutoraSchema):

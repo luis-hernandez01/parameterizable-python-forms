@@ -5,16 +5,19 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ProfesionSchema(BaseModel):
+    id: int
     nombre: str
     area_conocimiento: Optional[str]
 
 
-class ProfesionCreate(ProfesionSchema):
-    pass
+class ProfesionCreate(BaseModel):
+    nombre: str
+    area_conocimiento: Optional[str]
 
 
-class ProfesionUpdate(ProfesionSchema):
-    pass
+class ProfesionUpdate(BaseModel):
+    nombre: str
+    area_conocimiento: Optional[str]
 
 
 class ProfesionResponse(ProfesionSchema):

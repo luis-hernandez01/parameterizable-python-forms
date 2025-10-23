@@ -5,16 +5,23 @@ from decimal import Decimal
 
 
 class TramoSchema(BaseModel):
+    id: int
     id_ruta: Optional[int] = Field(None, description="Ruta a la que pertenece el tramo")
     nombre: str = Field(..., max_length=255, description="Nombre del tramo o sector")
     kilometraje_inicial: Optional[Decimal] = Field(None, description="Kilometraje inicial del tramo")
     kilometraje_final: Optional[Decimal] = Field(None, description="Kilometraje final del tramo")
 
-class TramoCreate(TramoSchema):
-    pass
+class TramoCreate(BaseModel):
+    id_ruta: Optional[int] = Field(None, description="Ruta a la que pertenece el tramo")
+    nombre: str = Field(..., max_length=255, description="Nombre del tramo o sector")
+    kilometraje_inicial: Optional[Decimal] = Field(None, description="Kilometraje inicial del tramo")
+    kilometraje_final: Optional[Decimal] = Field(None, description="Kilometraje final del tramo")
 
-class TramoUpdate(TramoSchema):
-    pass
+class TramoUpdate(BaseModel):
+    id_ruta: Optional[int] = Field(None, description="Ruta a la que pertenece el tramo")
+    nombre: str = Field(..., max_length=255, description="Nombre del tramo o sector")
+    kilometraje_inicial: Optional[Decimal] = Field(None, description="Kilometraje inicial del tramo")
+    kilometraje_final: Optional[Decimal] = Field(None, description="Kilometraje final del tramo")
 
 class TramoResponse(TramoSchema):
     id: int
