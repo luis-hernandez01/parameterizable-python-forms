@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.municipio_model import Municipio
+from src.models.divipola import Municipio
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.municipio_schema import municipioCreate, MunicipioUpdate, LogEntityRead
 from datetime import datetime
@@ -54,17 +54,20 @@ class MunicipioService:
     async def create_municipio(self, payload: municipioCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db.query(Municipio).filter(
-            Municipio.nombre == payload.nombre,
+            Municipio.nombre_municipio == payload.nombre_municipio,
                 Municipio.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El Municipio ya existe")
-        if payload.nombre =="":
+        if payload.nombre_municipio =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el Municipio se encuentra vacia ingresa un dato valido")
-        if len(payload.nombre) > 255:
+        if len(payload.nombre_municipio) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
         
-        entity = Municipio(nombre=payload.nombre, codigo_dane=payload.codigo_dane,
-                        id_departamento=payload.id_departamento, id_persona=tokenpayload.get("sub"), 
+        entity = Municipio(nombre_municipio=payload.nombre_municipio, codigo_departamento=payload.codigo_departamento,
+                        codigo_municipio=payload.codigo_municipio, 
+                        tipo_municipio=payload.tipo_municipio,
+                        latitud=payload.latitud, longitud=payload.longitud,
+                        id_persona=tokenpayload.get("sub"), 
                                         activo=True, created_at=datetime.utcnow())
         self.db.add(entity)
         self.db.commit()
@@ -103,31 +106,35 @@ class MunicipioService:
         dataupdate = self.db.query(Municipio).filter(
             Municipio.id == municipio_id,
                 Municipio.activo == True).first()
-        if payload.nombre:
+        if payload.nombre_municipio:
             existe = (
                 self.db.query(Municipio)
-                .filter(Municipio.nombre == payload.nombre, Municipio.id != municipio_id)
+                .filter(Municipio.nombre_municipio == payload.nombre_municipio, Municipio.id != municipio_id)
                 .first()
             )
             if existe:
                 return HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El nombre '{payload.nombre}' ya está siendo usado por otro Municipio."
+                    detail=f"El nombre '{payload.nombre_municipio}' ya está siendo usado por otro Municipio."
                 )
         
         if not dataupdate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El Municipio no fue hallada")
-        if payload.nombre =="":
+        if payload.nombre_municipio =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el Municipio se encuentra vacia ingresa un dato valido")
-        if len(payload.nombre) > 255:
+        if len(payload.nombre_municipio) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
 
         if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.codigo_dane = payload.codigo_dane
-            dataupdate.id_departamento = payload.id_departamento
+            dataupdate.codigo_departamento = payload.codigo_departamento
+            dataupdate.codigo_municipio = payload.codigo_municipio
+            dataupdate.nombre_municipio = payload.nombre_municipio
+            dataupdate.tipo_municipio = payload.tipo_municipio
+            dataupdate.latitud = payload.latitud
+            dataupdate.longitud = payload.longitud
+            
             dataupdate.id_persona = tokenpayload.get("sub")
             dataupdate.updated_at = datetime.utcnow()
             self.db.commit()

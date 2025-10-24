@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.departamento_model import Departamento
+from src.models.divipola import Departamento
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.departamento_schema import DepartamentoCreate, DepartamentoUpdate, LogEntityRead
 from datetime import datetime
@@ -38,7 +38,7 @@ class DepartamentoService:
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
         
-        entity = Departamento(nombre=payload.nombre, codigo_dane=payload.codigo_dane, 
+        entity = Departamento(nombre=payload.nombre, codigo=payload.codigo, 
                             id_persona=tokenpayload.get("sub"), 
                             activo=True, created_at=datetime.utcnow())
         self.db.add(entity)
@@ -101,7 +101,7 @@ class DepartamentoService:
 
         if dataupdate:
             dataupdate.nombre = payload.nombre
-            dataupdate.codigo_dane = payload.codigo_dane
+            dataupdate.codigo = payload.codigo
             dataupdate.id_persona = tokenpayload.get("sub")
             dataupdate.updated_at = datetime.utcnow()
             self.db.commit()

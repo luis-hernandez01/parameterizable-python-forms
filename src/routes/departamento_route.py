@@ -4,8 +4,9 @@ from typing import Dict, Any
 
 from src.config.config import get_session
 from src.services.departamento_services import DepartamentoService
-from src.schemas.departamento_schema import (DepartamentoListResponse, 
-                                                DepartamentoCreate,
+from src.schemas.departamento_schema import (DepartamentoResponse, 
+                                            DepartamentoListResponse, 
+                                            DepartamentoCreate,
                                                 DepartamentoUpdate)
 from src.utils.jwt_validator_util import verify_jwt_token
 

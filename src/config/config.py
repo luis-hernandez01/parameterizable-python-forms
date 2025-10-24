@@ -27,6 +27,11 @@ API_KEY_ = os.getenv("API_KEY_")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 
+# Rutas de datos
+DATA_DIR: str = "data"
+MUNICIPIOS_GEOJSON: str = "municipios_colombia.geojson"
+DEPARTAMENTOS_GEOJSON: str = "departamentos_colombia.geojson"
+
 
 # # --- Configura las URLs dinámicamente ---
 DB_CONFIGS = [

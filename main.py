@@ -21,7 +21,10 @@ from src.routes import (
     unidad_ejecutora_route,
     migrador_route,
     proyecto_route,
-    contratos_route
+    contratos_route,
+    polygon,
+    line,
+    point
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
@@ -39,7 +42,8 @@ app = FastAPI(title="Servicios parametrizables", version="1.0.0")
 
 allow_origins=[
     "http://localhost:4200",
-    "https://parametrizable-forms.onrender.com"
+    "https://parametrizable-forms.onrender.com",
+    "http://127.0.0.1:8000"
     ]
 
 app.add_middleware(
@@ -118,6 +122,10 @@ app.include_router(
     prefix="/contratos",
     tags=["Contratos"],
 )
+
+app.include_router(polygon.router)
+app.include_router(line.router)
+app.include_router(point.router)
 
 
 #  Documentación con Swagger/OpenAPI
