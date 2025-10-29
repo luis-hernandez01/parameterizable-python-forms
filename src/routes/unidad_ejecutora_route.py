@@ -82,7 +82,9 @@ async def create_unidades(
 
 # endpoint de show o ver registro
 @router.get("/{unidad_id}")
-async def get_show(unidad_id: int, db: Session = Depends(lambda: next(get_session(0)))):
+async def get_show(unidad_id: int, 
+                db: Session = Depends(lambda: next(get_session(0))),
+                tokenpayload: dict = Depends(verify_jwt_token)):
     return await UnidadEjecutoraService(db).show(unidad_id)
 
 

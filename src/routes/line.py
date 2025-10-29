@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.config.config import get_session
 from src.models.schemas import LineCoordinates, APIResponse
 from src.services.line_service import line_service
+from src.utils.jwt_validator_util import verify_jwt_token
 
 router = APIRouter(prefix="/api/line", tags=["Line Analysis"])
 
@@ -13,7 +14,8 @@ router = APIRouter(prefix="/api/line", tags=["Line Analysis"])
 @router.post("/analyze", response_model=APIResponse)
 async def analyze_line(
     line_data: LineCoordinates,
-    db: Session = Depends(lambda: next(get_session(0)))
+    db: Session = Depends(lambda: next(get_session(0))),
+    tokenpayload: dict = Depends(verify_jwt_token),
 ):
     """
     Analiza una línea y retorna los municipios y departamentos por donde pasa

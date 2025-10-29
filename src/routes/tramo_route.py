@@ -15,10 +15,11 @@ router = APIRouter()
 @router.get("/all")
 async def list_all(
     # de esta manera llamo solamente la primera base de datos
+    id_ruta: int,
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-    return await TramoService(db).all()
+    return await TramoService(db).all(id_ruta)
 
 
 
@@ -68,7 +69,9 @@ async def creates(request: Request,
 
 # endpoint de show o ver registro
 @router.get("/{tramo_id}")
-async def get_show(tramo_id: int, db: Session = Depends(lambda: next(get_session(0)))):
+async def get_show(tramo_id: int,
+                db: Session = Depends(lambda: next(get_session(0))),
+                tokenpayload: dict = Depends(verify_jwt_token)):
     return await TramoService(db).show(tramo_id)
 
 

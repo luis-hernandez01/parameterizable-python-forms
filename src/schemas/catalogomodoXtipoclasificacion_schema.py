@@ -2,22 +2,30 @@ from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
-class categorizacionchema(BaseModel):
+class Catalogoschema(BaseModel):
     id: int
     nombre: str
+    modos: Optional[str]
+    tipoclasificacion: Optional[str]
 
-class categorizacionCreate(BaseModel):
+class CatalogoCreate(BaseModel):
     nombre: str
+    id_modo: int
+    id_tipo_clasificacion_modos: int
 
-class categorizacionUpdate(BaseModel):
+class CatalogoUpdate(BaseModel):
     nombre: str
+    id_modo: int
+    id_tipo_clasificacion_modos: int
 
-class categorizacionResponse(categorizacionchema):
+class CatalogoResponse(Catalogoschema):
     id: int
 
 class LogEntityRead(BaseModel):
     id: int
     nombre: str
+    id_modo: int
+    id_tipo_clasificacion_modos: int
     id_persona: int
     activo: bool
     created_at: datetime
@@ -34,7 +42,7 @@ class PaginacionSchema(BaseModel):
     page: int
     pages: int
 
-class categorizacionListResponse(BaseModel):
-    data: List[categorizacionchema]
+class CatalogoListResponse(BaseModel):
+    data: List[Catalogoschema]
     pagination: PaginacionSchema
 

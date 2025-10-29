@@ -2,17 +2,17 @@ from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
-class funcionalidades_carreteraSchema(BaseModel):
+class TipoClasificacionModosSchema(BaseModel):
     id: int
     nombre: str
 
-class funcionalidades_carreteraCreate(BaseModel):
+class TipoClasificacionModosCreate(BaseModel):
     nombre: str
 
-class funcionalidades_carreteraUpdate(BaseModel):
+class TipoClasificacionModosUpdate(BaseModel):
     nombre: str
 
-class funcionalidades_carreteraResponse(funcionalidades_carreteraSchema):
+class TipoClasificacionModosResponse(TipoClasificacionModosSchema):
     id: int
 
 class LogEntityRead(BaseModel):
@@ -34,7 +34,7 @@ class PaginacionSchema(BaseModel):
     page: int
     pages: int
 
-class FuncionalidadesListResponse(BaseModel):
-    data: List[funcionalidades_carreteraSchema]
+class TipoClasificacionListResponse(BaseModel):
+    data: List[TipoClasificacionModosSchema]
     pagination: PaginacionSchema
 

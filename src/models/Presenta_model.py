@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, TIMESTAMP, Boolean
 from src.config.config import Base
 
-class FuncionalidadesCarreteras(Base):
-    __tablename__ = "funcionalidades_carreteras"
+class Presenta(Base):
+    __tablename__ = "presenta"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment="Identificador único de la unidad ejecutora")
     nombre = Column(String(255), unique=True, nullable=False, comment="Nombre de la unidad ejecutora")

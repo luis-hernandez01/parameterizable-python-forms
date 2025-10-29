@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 
 from src.config.config import get_session
-from src.services.categorizacion_services import CategorizacionService
-from src.schemas.categorizacion_schema import (categorizacionListResponse, 
-                                                categorizacionCreate,
-                                                categorizacionUpdate)
+from src.services.catalogo_services import catalogoService
+from src.schemas.catalogomodoXtipoclasificacion_schema import (CatalogoListResponse, 
+                                                CatalogoCreate,
+                                                CatalogoUpdate)
 from src.utils.jwt_validator_util import verify_jwt_token
 
 # inicializacion del roter
@@ -15,14 +15,15 @@ router = APIRouter()
 @router.get("/all")
 async def list_all(
     # de esta manera llamo solamente la primera base de datos
+    id_modo: int, id_tipo: int,
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-    return await CategorizacionService(db).all()
+    return await catalogoService(db).all(id_modo, id_tipo)
 
 
 # endpoint de listar data con paginacion incluida
-@router.get("/", response_model=categorizacionListResponse)
+@router.get("/", response_model=CatalogoListResponse)
 def lista(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -30,8 +31,8 @@ def lista(
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
-    data = CategorizacionService(db).list_categorizacion(skip=skip, limit=limit)
-    total = CategorizacionService(db).count_categorizacion()  
+    data = catalogoService(db).list_catalogo(skip=skip, limit=limit)
+    total = catalogoService(db).count_catalogo()  
     # Método adicional para contar todos los datos
     return {
         "data": data,
@@ -47,10 +48,12 @@ def lista(
     # endpoin de crear registro
 @router.post("/")
 async def creates(request: Request, 
-                        payload: categorizacionCreate, 
+                        payload: CatalogoCreate, 
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
-                        tokenpayload: dict = Depends(verify_jwt_token)):
+                        tokenpayload: dict = Depends(verify_jwt_token)
+                        # tokenpayload: dict = {"sub": 2}
+                        ):
     
     # crear registrro con uan BD y esta dependencia se agregaria asi 
     # => db: Session = Depends(lambda: next(get_session(0)))
@@ -59,23 +62,25 @@ async def creates(request: Request,
     data = []
     
     for db in dbs:
-        result = await CategorizacionService(db).create_categorizacion(payload, request, tokenpayload)
+        result = await catalogoService(db).create_catalogo(payload, request, tokenpayload)
         data.append(result)
 
     return {"data": data[0]}
 
 
 # endpoint de show o ver registro
-@router.get("/{categorizacion_id}")
-async def get_show(categorizacion_id: int, db: Session = Depends(lambda: next(get_session(0)))):
-    return await CategorizacionService(db).show(categorizacion_id)
+@router.get("/{catalogo_id}")
+async def get_show(catalogo_id: int, 
+                db: Session = Depends(lambda: next(get_session(0))),
+                tokenpayload: dict = Depends(verify_jwt_token)):
+    return await catalogoService(db).show(catalogo_id)
 
 
 # endpoin para actualizar un registro x
-@router.put("/{categorizacion_id}")
+@router.put("/{catalogo_id}")
 async def update(request: Request, 
-                        categorizacion_id: int,
-                        payload: categorizacionUpdate,
+                        catalogo_id: int,
+                        payload: CatalogoUpdate,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
@@ -88,23 +93,23 @@ async def update(request: Request,
     data = []
     
     for db in dbs:
-        result = await CategorizacionService(db).update_categorizacion(categorizacion_id, payload, request, tokenpayload)
+        result = await catalogoService(db).update_catalogo(catalogo_id, payload, request, tokenpayload)
         data.append(result)
     
     return {"data": data[0]}
 
 
 # endpoint para eliminar un registro logicamente
-@router.delete("/{categorizacion_id}")
+@router.delete("/{catalogo_id}")
 async def delete(request: Request, 
-                        categorizacion_id: int, 
+                        catalogo_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
     
     data = []
     for db in dbs:
-        result = await CategorizacionService(db).delete_categorizacion(categorizacion_id, request, tokenpayload)
+        result = await catalogoService(db).delete_catalogo(catalogo_id, request, tokenpayload)
         data.append(result)
     
     return {"data": data[0]}

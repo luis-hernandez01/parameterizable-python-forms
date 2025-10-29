@@ -32,13 +32,20 @@ DATA_DIR: str = "data"
 MUNICIPIOS_GEOJSON: str = "municipios_colombia.geojson"
 DEPARTAMENTOS_GEOJSON: str = "departamentos_colombia.geojson"
 
+# en produccion se debe de colocar en False para que no genere problemas
+DEBUG: bool = True
+
 
 # # --- Configura las URLs dinámicamente ---
 DB_CONFIGS = [
-    f"postgresql+psycopg2://notifications:ka8z53PkKZE5uNmCAOyVA2nMbiHNpWE3"
-    f"@dpg-d3d8c3jipnbc73fck58g-a.frankfurt-postgres.render.com/notifications_si78",
+    # servicio wed 
+    
+    f"postgresql://notifications:oiuygb91ME3pUd3mFku0d9NcFBei16Ui"
+    f"@dpg-d4141p9r0fns739u4m5g-a.frankfurt-postgres.render.com/notifications_si78_16wq",
     f"postgresql+psycopg2://root:9vUcmw7EWU4W3fdqfaK4nZ7ggtJ22Bu7"
     f"@dpg-d3ogh1ili9vc73c52m3g-a.oregon-postgres.render.com/wayra",
+    
+    # servicio local
     
     # f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
     # f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}",

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.config.config import get_session
 from src.models.schemas import PointCoordinates, APIResponse
 from src.services.point_service import point_service
+from src.utils.jwt_validator_util import verify_jwt_token
 
 router = APIRouter(prefix="/api/point", tags=["Point Analysis"])
 
@@ -13,7 +14,8 @@ router = APIRouter(prefix="/api/point", tags=["Point Analysis"])
 @router.post("/analyze", response_model=APIResponse)
 async def analyze_point(
     point_data: PointCoordinates,
-    db: Session = Depends(lambda: next(get_session(0)))
+    db: Session = Depends(lambda: next(get_session(0))),
+    tokenpayload: dict = Depends(verify_jwt_token),
 ):
     """
     Analiza un punto y retorna el municipio y departamento donde se encuentra

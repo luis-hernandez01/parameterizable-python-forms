@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, TIMESTAMP, Boolean
 from src.config.config import Base
 
-class CategorizacionesCarreteras(Base):
-    __tablename__ = "categorizaciones_carreteras"
+class Modo(Base):
+    __tablename__ = "modo"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment="Identificador único de la unidad ejecutora")
     nombre = Column(String(255), unique=True, nullable=False, comment="Nombre de la unidad ejecutora")

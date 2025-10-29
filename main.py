@@ -3,15 +3,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
 
-from src.config.config import Base, engine
+from src.config.config import Base, engine, DEBUG
 
 # directorios de rutas
 from src.routes import (
-    categorizacion_route,
+    TipoClasificacionModos_route,
+    catalogo_route,
     clasificaciones_proyecto_route,
     departamento_route,
     direccion_territorial_route,
-    funcionalidades_carreteras_route,
     modo_route,
     municipio_route,
     profesion_route,
@@ -24,7 +24,9 @@ from src.routes import (
     contratos_route,
     polygon,
     line,
-    point
+    point,
+    presenta_route,
+    trimestre_route
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
@@ -59,7 +61,8 @@ app.add_middleware(
 
 app.include_router(migrador_route.router, prefix="/migrar", tags=["Migrar"])
 
-
+app.include_router(trimestre_route.router, prefix="/trimestre", tags=["Trimestre"])
+app.include_router(presenta_route.router, prefix="/presenta", tags=["Presenta"])
 
 app.include_router(
     municipio_route.router,
@@ -89,9 +92,7 @@ app.include_router(
 )
 
 app.include_router(tramo_route.router, prefix="/tramos", tags=["Tramos"])
-app.include_router(
-    categorizacion_route.router, prefix="/categorizacion", tags=["Categorización"]
-)
+
 app.include_router(
     rutas_viales_route.router, prefix="/rutas_viales", tags=["Rutas viales"]
 )
@@ -105,11 +106,13 @@ app.include_router(
     tags=["Clasificacion proyectos"],
 )
 app.include_router(
-    funcionalidades_carreteras_route.router,
-    prefix="/funcionalidades_carreteras",
-    tags=["Funcionalidades carretera"],
+    TipoClasificacionModos_route.router,
+    prefix="/tipo_clasificacion_modos",
+    tags=["Tipo clasifificacion de modos"],
 )
 app.include_router(modo_route.router, prefix="/modo", tags=["Modo"])
+
+
 
 app.include_router(
     proyecto_route.router,
@@ -130,3 +133,11 @@ app.include_router(point.router)
 
 #  Documentación con Swagger/OpenAPI
 app.mount("/", get_scalar_api_reference())
+
+# para render por el puerto 10000
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", 
+                host="0.0.0.0", 
+                port=10000, 
+                reload=DEBUG)

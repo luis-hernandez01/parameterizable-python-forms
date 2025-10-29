@@ -68,7 +68,9 @@ async def creates(request: Request,
 
 # endpoint de show o ver registro
 @router.get("/{tipos_id}")
-async def get_show(tipos_id: int, db: Session = Depends(lambda: next(get_session(0)))):
+async def get_show(tipos_id: int, 
+                db: Session = Depends(lambda: next(get_session(0))),
+                tokenpayload: dict = Depends(verify_jwt_token)):
     return await TiposProyectosService(db).show(tipos_id)
 
 

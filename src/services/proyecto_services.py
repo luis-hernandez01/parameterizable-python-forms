@@ -40,8 +40,8 @@ class ProyectoService:
                 "id_tramo_sector",
                 "id_clasificacion",
                 "id_modo_transporte",
-                "id_funcionalidad",
-                "id_categorizacion",
+                "id_tipoclasificacion_modo",
+                "catalogo",
             ]:
                 if data.get(key) == 0:
                     data[key] = None
@@ -111,8 +111,8 @@ class ProyectoService:
                     "id_tramo_sector",
                     "id_clasificacion",
                     "id_modo_transporte",
-                    "id_funcionalidad",
-                    "id_categorizacion",
+                    "id_tipoclasificacion_modo",
+                    "catalogo",
                 ] and value == 0:
                     value = None
 

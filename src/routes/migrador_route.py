@@ -6,7 +6,7 @@ import pandas as pd
 import io
 from datetime import datetime
 from src.config.config import get_session
-
+from src.utils.jwt_validator_util import verify_jwt_token
 router = APIRouter()
 
 
@@ -25,8 +25,6 @@ def parse_datetime(value: Any):
         return None
 
 
-
-
 # Endpoint principal
 
 @router.post("/upload-excel")
@@ -34,7 +32,8 @@ async def upload_excel(
     file: UploadFile = File(...),
     modelo: str = Form(...),   # Ej: "unidad_ejecutora"
     clases: str = Form(...),   # Ej: "UnidadEjecutora"
-    dbs: Union[Session, List[Session]] = Depends(get_session)
+    dbs: Union[Session, List[Session]] = Depends(get_session),
+    tokenpayload: dict = Depends(verify_jwt_token),
 ):
     """
     Servicio dinámico para subir un Excel y poblar tablas según el modelo.
@@ -50,7 +49,7 @@ async def upload_excel(
         df = df.where(pd.notnull(df), None)
 
         # Cargar modelo dinámicamente
-        module_name = f"src.models.{modelo.lower()}_model"
+        module_name = f"src.models.{modelo}_model"
         try:
             module = importlib.import_module(module_name)
         except ModuleNotFoundError:
