@@ -25,8 +25,8 @@ from src.routes import (
     polygon,
     line,
     point,
-    presenta_route,
-    trimestre_route
+    trimestre_route,
+    presenta_route
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
@@ -60,7 +60,6 @@ app.add_middleware(
 # Aquí se incluyen las rutas definidas en la carpeta 'routes'.
 
 app.include_router(migrador_route.router, prefix="/migrar", tags=["Migrar"])
-
 app.include_router(trimestre_route.router, prefix="/trimestre", tags=["Trimestre"])
 app.include_router(presenta_route.router, prefix="/presenta", tags=["Presenta"])
 
@@ -112,7 +111,10 @@ app.include_router(
 )
 app.include_router(modo_route.router, prefix="/modo", tags=["Modo"])
 
-
+app.include_router(
+    catalogo_route.router, prefix="/catalogo", 
+    tags=["Catalogo de modos por tipo clasificacion"]
+)
 
 app.include_router(
     proyecto_route.router,
