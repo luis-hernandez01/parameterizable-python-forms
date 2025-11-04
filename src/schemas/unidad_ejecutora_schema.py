@@ -38,13 +38,10 @@ class LogEntityRead(BaseModel):
 
 
 class PaginacionSchema(BaseModel):
-    skip: int
-    limit: int
+    items: List[UnidadEjecutoraSchema]
+    per_page: int
+    size: int
     total: int
     page: int
     pages: int
-
-
-class UnidadEjecutoraListResponse(BaseModel):
-    data: List[UnidadEjecutoraSchema]
-    pagination: PaginacionSchema
+    last_page:int

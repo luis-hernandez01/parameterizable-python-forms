@@ -9,6 +9,7 @@ class TipoOperacionEnum(str, Enum):
     INSERT = "INSERT"
     UPDATE = "UPDATE"
     DELETE = "DELETE"
+    REACTIVATE = "REACTIVATE"
 
 
 class LogBase(BaseModel):

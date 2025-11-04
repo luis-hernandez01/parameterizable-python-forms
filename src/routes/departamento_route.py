@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.config.config import get_session
 from src.services.departamento_services import DepartamentoService
-from src.schemas.departamento_schema import (DepartamentoResponse, 
-                                            DepartamentoListResponse, 
-                                            DepartamentoCreate,
-                                                DepartamentoUpdate)
+from src.schemas.departamento_schema import (DepartamentoCreate,
+                                            DepartamentoUpdate, PaginacionSchema)
 from src.utils.jwt_validator_util import verify_jwt_token
 
 # inicializacion del roter
@@ -22,27 +20,33 @@ async def list_all(
 ):
     return await DepartamentoService(db).all()
 
+
+
+
 # endpoint de listar data con paginacion incluida
-@router.get("/", response_model=DepartamentoListResponse)
+@router.get("/", response_model=PaginacionSchema)
 def lista(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    activo: Optional[bool] = Query(None, description="Filtrar por estado activo (true o false)"),
     # de esta manera llamo solamente la primera base de datos
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
-    data = DepartamentoService(db).list_departamento(skip=skip, limit=limit)
-    total = DepartamentoService(db).count_departamento()  
+    skip = (page - 1) * per_page
+    limit = per_page
+    data = DepartamentoService(db).list_departamento(activo=activo, skip=skip, limit=limit)
+    total = DepartamentoService(db).count_departamento(activo=activo)  
     # Método adicional para contar todos los datos
     return {
-        "data": data,
-        "pagination": {
-            "skip": skip,
-            "limit": limit,
-            "total": total,
-            "page": (skip // limit) + 1,
-            "pages": (total + limit - 1) // limit  # Redondeo hacia arriba
-        }
+        "items": data,
+        "per_page": per_page,
+        "size": limit,
+        "total": total,
+        "last_page" : (total + per_page - 1) // per_page,
+        "page": page,
+        "pages": (total + limit - 1) // limit  # Redondeo hacia arriba
+        
     }
     
     # endpoin de crear registro
@@ -70,7 +74,8 @@ async def creates(request: Request,
 @router.get("/{departamento_id}")
 async def get_show(departamento_id: int,
                 db: Session = Depends(lambda: next(get_session(0))),
-                tokenpayload: dict = Depends(verify_jwt_token)):
+                # tokenpayload: dict = Depends(verify_jwt_token)
+                ):
     return await DepartamentoService(db).show(departamento_id)
 
 
@@ -108,6 +113,20 @@ async def delete(request: Request,
     data = []
     for db in dbs:
         result = await DepartamentoService(db).delete_departamento(departamento_id, request, tokenpayload)
+        data.append(result)
+    
+    return {"data": data[0]}
+
+
+@router.post("/{departamento_id}/reactivate")
+async def reactivates(request: Request, 
+                        departamento_id: int, 
+                        # de esta manera llamo todas las bases de datos existentes
+                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        tokenpayload: dict = Depends(verify_jwt_token)):
+    data = []
+    for db in dbs:
+        result = await DepartamentoService(db).reactivate(departamento_id, request, tokenpayload)
         data.append(result)
     
     return {"data": data[0]}

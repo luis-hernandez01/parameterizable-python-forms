@@ -44,6 +44,7 @@ app = FastAPI(title="Servicios parametrizables", version="1.0.0")
 
 allow_origins=[
     "http://localhost:4200",
+    "http://127.0.0.1:4200",
     "https://parametrizable-forms.onrender.com",
     "http://127.0.0.1:8000"
     ]

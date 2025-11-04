@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.config.config import get_session
 from src.services.municipio_services import MunicipioService
-from src.schemas.municipio_schema import (municipioListResponse, 
+from src.schemas.municipio_schema import (PaginacionSchema, 
                                                 municipioCreate,
                                                 MunicipioUpdate)
 from src.utils.jwt_validator_util import verify_jwt_token
@@ -20,27 +20,31 @@ async def list_all(
 ):
     return await MunicipioService(db).all()
 
+
 # endpoint de listar data con paginacion incluida
-@router.get("/", response_model=municipioListResponse)
+@router.get("/", response_model=PaginacionSchema)
 def lista(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    activo: Optional[bool] = Query(None, description="Filtrar por estado activo (true o false)"),
     # de esta manera llamo solamente la primera base de datos
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
-    data = MunicipioService(db).list_municipio(skip=skip, limit=limit)
-    total = MunicipioService(db).count_municipio()  
+    skip = (page - 1) * per_page
+    limit = per_page
+    data = MunicipioService(db).list_municipio(activo=activo, skip=skip, limit=limit)
+    total = MunicipioService(db).count_municipio(activo=activo)  
     # Método adicional para contar todos los datos
     return {
-        "data": data,
-        "pagination": {
-            "skip": skip,
-            "limit": limit,
-            "total": total,
-            "page": (skip // limit) + 1,
-            "pages": (total + limit - 1) // limit  # Redondeo hacia arriba
-        }
+        "items": data,
+        "per_page": per_page,
+        "size": limit,
+        "total": total,
+        "last_page" : (total + per_page - 1) // per_page,
+        "page": page,
+        "pages": (total + limit - 1) // limit  # Redondeo hacia arriba
+        
     }
     
     # endpoin de crear registro
@@ -106,6 +110,20 @@ async def delete(request: Request,
     data = []
     for db in dbs:
         result = await MunicipioService(db).delete_municipio(municipio_id, request, tokenpayload)
+        data.append(result)
+    
+    return {"data": data[0]}
+
+
+@router.post("/{municipio_id}/reactivate")
+async def reactivates(request: Request, 
+                        municipio_id: int, 
+                        # de esta manera llamo todas las bases de datos existentes
+                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        tokenpayload: dict = Depends(verify_jwt_token)):
+    data = []
+    for db in dbs:
+        result = await MunicipioService(db).reactivate(municipio_id, request, tokenpayload)
         data.append(result)
     
     return {"data": data[0]}

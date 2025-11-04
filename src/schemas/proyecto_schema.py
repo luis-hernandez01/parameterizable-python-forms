@@ -82,13 +82,11 @@ class LogEntityRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class PaginacionSchema(BaseModel):
-    skip: int
-    limit: int
+    items: List[Pyoyectochema]
+    per_page: int
+    size: int
     total: int
     page: int
     pages: int
-
-class ProyectoListResponse(BaseModel):
-    data: List[Pyoyectochema]
-    pagination: PaginacionSchema
+    last_page:int
 

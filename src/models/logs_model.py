@@ -21,6 +21,7 @@ class TipoOperacionEnum(str, enum.Enum):
     INSERT = "INSERT"
     UPDATE = "UPDATE"
     DELETE = "DELETE"
+    REACTIVATE = "REACTIVATE"
 
 
 class Log(Base):

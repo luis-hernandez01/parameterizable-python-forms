@@ -28,13 +28,11 @@ class LogEntityRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class PaginacionSchema(BaseModel):
-    skip: int
-    limit: int
+    items: List[TrimestreSchema]
+    per_page: int
+    size: int
     total: int
     page: int
     pages: int
-
-class TrimestreListResponse(BaseModel):
-    data: List[TrimestreSchema]
-    pagination: PaginacionSchema
+    last_page:int
 

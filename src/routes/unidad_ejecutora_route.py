@@ -1,13 +1,11 @@
-from typing import Any, Dict
-
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from src.config.config import get_session
 from src.schemas.unidad_ejecutora_schema import (
-    UnidadEjecutoraSchema,
     UnidadEjecutoraCreate,
-    UnidadEjecutoraListResponse,
+    PaginacionSchema,
     UnidadEjecutoraUpdate,
 )
 from src.services.unidad_ejecutora_services import UnidadEjecutoraService
@@ -27,29 +25,31 @@ async def list_all(
 ):
     return await UnidadEjecutoraService(db).all()
     
-    
 
 # endpoint de listar data con paginacion incluida
-@router.get("/", response_model=UnidadEjecutoraListResponse)
+@router.get("/", response_model=PaginacionSchema)
 def list_unidades(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    activo: Optional[bool] = Query(None, description="Filtrar por activo (true o false)"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
     # de esta manera llamo solamente la primera base de datos
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token),
 ) -> Dict[str, Any]:
-    data = UnidadEjecutoraService(db).list_unidad_ejecutora(skip=skip, limit=limit)
-    total = UnidadEjecutoraService(db).count_unidad_ejecutora()
+    skip = (page - 1) * per_page
+    limit = per_page
+    data = UnidadEjecutoraService(db).list_unidad_ejecutora(activo=activo, skip=skip, limit=limit)
+    total = UnidadEjecutoraService(db).count_unidad_ejecutora(activo=activo)
     # Método adicional para contar todos los datos
     return {
-        "data": data,
-        "pagination": {
-            "skip": skip,
-            "limit": limit,
-            "total": total,
-            "page": (skip // limit) + 1,
-            "pages": (total + limit - 1) // limit,  # Redondeo hacia arriba
-        },
+        "items": data,
+        "per_page": per_page,
+        "size": limit,
+        "total": total,
+        "last_page" : (total + per_page - 1) // per_page,
+        "page": page,
+        "pages": (total + limit - 1) // limit  # Redondeo hacia arriba
+        
     }
 
     # endpoin de crear registro
@@ -132,4 +132,19 @@ async def delete_unidades(
         )
         data.append(result)
 
+    return {"data": data[0]}
+
+
+
+@router.post("/{unidad_id}/reactivate")
+async def reactivates(request: Request, 
+                        unidad_id: int, 
+                        # de esta manera llamo todas las bases de datos existentes
+                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        tokenpayload: dict = Depends(verify_jwt_token)):
+    data = []
+    for db in dbs:
+        result = await UnidadEjecutoraService(db).reactivate(unidad_id, request, tokenpayload)
+        data.append(result)
+    
     return {"data": data[0]}

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.config.config import get_session
 from src.services.profesion_services import ProfesionService
-from src.schemas.profesion_schema import (ProfesionListResponse, 
+from src.schemas.profesion_schema import (PaginacionSchema, 
                                                 ProfesionCreate,
                                                 ProfesionUpdate)
 from src.utils.jwt_validator_util import verify_jwt_token
@@ -21,26 +21,29 @@ async def list_all(
     return await ProfesionService(db).all()
 
 # endpoint de listar data con paginacion incluida
-@router.get("/", response_model=ProfesionListResponse)
+@router.get("/", response_model=PaginacionSchema)
 def lista(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    activo: Optional[bool] = Query(None, description="Filtrar por estado activo (true o false)"),
     # de esta manera llamo solamente la primera base de datos
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
-    data = ProfesionService(db).list_profesion(skip=skip, limit=limit)
-    total = ProfesionService(db).count_profesion()  
+    skip = (page - 1) * per_page
+    limit = per_page
+    data = ProfesionService(db).list_profesion(activo=activo, skip=skip, limit=limit)
+    total = ProfesionService(db).count_profesion(activo=activo)  
     # Método adicional para contar todos los datos
     return {
-        "data": data,
-        "pagination": {
-            "skip": skip,
-            "limit": limit,
-            "total": total,
-            "page": (skip // limit) + 1,
-            "pages": (total + limit - 1) // limit  # Redondeo hacia arriba
-        }
+        "items": data,
+        "per_page": per_page,
+        "size": limit,
+        "total": total,
+        "last_page" : (total + per_page - 1) // per_page,
+        "page": page,
+        "pages": (total + limit - 1) // limit  # Redondeo hacia arriba
+        
     }
     
     # endpoin de crear registro
@@ -106,6 +109,21 @@ async def delete(request: Request,
     data = []
     for db in dbs:
         result = await ProfesionService(db).delete_profesion(profesion_id, request, tokenpayload)
+        data.append(result)
+    
+    return {"data": data[0]}
+
+
+
+@router.post("/{profesion_id}/reactivate")
+async def reactivates(request: Request, 
+                        profesion_id: int, 
+                        # de esta manera llamo todas las bases de datos existentes
+                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        tokenpayload: dict = Depends(verify_jwt_token)):
+    data = []
+    for db in dbs:
+        result = await ProfesionService(db).reactivate(profesion_id, request, tokenpayload)
         data.append(result)
     
     return {"data": data[0]}

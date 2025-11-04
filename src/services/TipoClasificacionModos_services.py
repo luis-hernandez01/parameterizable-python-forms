@@ -23,12 +23,13 @@ class TipoClasificacionModosService:
             .distinct()
             .all()
         )
+    
         
 # servicio para listar  los registros
-    def list_tipo_clasificacion(self, skip: int, limit: int):
-        return self.db.query(TipoClasificacionModos).filter(TipoClasificacionModos.activo == True).offset(skip).limit(limit).all()
-    def count_tipo_clasificacion(self):
-        return self.db.query(TipoClasificacionModos).filter(TipoClasificacionModos.activo == True).count()
+    def list_tipo_clasificacion(self, skip: int, limit: int, activo: bool | None = None):
+        return self.db.query(TipoClasificacionModos).filter(TipoClasificacionModos.activo == activo).offset(skip).limit(limit).all()
+    def count_tipo_clasificacion(self, activo: bool | None = None):
+        return self.db.query(TipoClasificacionModos).filter(TipoClasificacionModos.activo == activo).count()
     
     
     # servicio para crear un registro
@@ -157,3 +158,38 @@ class TipoClasificacionModosService:
             user_agent=1)
         
         return LogEntityRead.from_orm(datadelete)
+    
+    
+    
+    
+    # servicio para reactivar logicamente un registro
+    async def reactivate(self, tipo_clasificacion_id: int, request: Request, tokenpayload: dict):
+        datareactivate = self.db.query(TipoClasificacionModos).filter(
+            TipoClasificacionModos.id == tipo_clasificacion_id).first()
+        if not datareactivate:
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
+        
+        if datareactivate.activo:
+            return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
+        
+        datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
+    # le paso un valor false para realizar un sofdelete para un eliminado logico
+        datareactivate.activo = True
+        datareactivate.deleted_at = datetime.utcnow()
+        datareactivate.id_persona = tokenpayload.get("sub")
+        # guardar los cambios
+        self.db.commit()
+        self.db.refresh(datareactivate)
+        
+        
+        registrar_log(LogUtil(self.db),
+            tabla_afectada="tipo_clasificacion_modos",
+            id_registro_afectado=datareactivate.id,
+            tipo_operacion=TipoOperacionEnum.REACTIVATE,
+            datos_nuevos=LogEntityRead.from_orm(datareactivate).model_dump(mode="json"),
+            datos_viejos=datos_viejos,
+            id_persona_operacion=datareactivate.id_persona,
+            ip_origen=request.client.host,
+            user_agent=1)
+        
+        return LogEntityRead.from_orm(datareactivate)

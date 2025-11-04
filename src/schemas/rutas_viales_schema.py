@@ -30,13 +30,11 @@ class LogEntityRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class PaginacionSchema(BaseModel):
-    skip: int
-    limit: int
+    items: List[RutasSchema]
+    per_page: int
+    size: int
     total: int
     page: int
     pages: int
-
-class RutasListResponse(BaseModel):
-    data: List[RutasSchema]
-    pagination: PaginacionSchema
+    last_page:int
 
