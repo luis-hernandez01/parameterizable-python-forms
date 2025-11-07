@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
 
-from src.config.config import Base, engine, DEBUG
+from src.config.config import Base, engine, DEBUG, HIDE_TES
 
 # directorios de rutas
 from src.routes import (
@@ -135,7 +135,10 @@ app.include_router(point.router)
 
 
 #  Documentación con Swagger/OpenAPI
-app.mount("/", get_scalar_api_reference())
+
+if HIDE_TES == "development":
+    app.mount("/", get_scalar_api_reference())
+
 
 # para render por el puerto 10000
 if __name__ == "__main__":
