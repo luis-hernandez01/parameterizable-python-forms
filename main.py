@@ -42,12 +42,7 @@ app = FastAPI(title="Servicios parametrizables", version="1.0.0")
 # puedan comunicarse con esta API.
 # CORS: ajusta a tus orígenes reales
 
-allow_origins=[
-    "http://localhost:4200",
-    "http://127.0.0.1:4200",
-    "https://parametrizable-forms.onrender.com",
-    "http://127.0.0.1:8000"
-    ]
+allow_origins=["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -136,8 +131,8 @@ app.include_router(point.router)
 
 #  Documentación con Swagger/OpenAPI
 
-if HIDE_TES == "development":
-    app.mount("/", get_scalar_api_reference())
+# if HIDE_TES == "development":
+app.mount("/", get_scalar_api_reference())
 
 
 # para render por el puerto 10000
