@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.profesion_model import Profesion
+from src.models.profesion_model import (ProfesionAika, ProfesionWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.profesion_schema import ProfesionCreate, ProfesionUpdate, LogEntityRead
 from datetime import datetime
@@ -13,37 +13,43 @@ class ProfesionService:
         
     async def all(self):
         return (
-            self.db.query(Profesion)
-            .filter(Profesion.activo == True)
+            self.db.query(ProfesionAika)
+            .filter(ProfesionAika.activo == True)
             .all()
         )
         
 # servicio para listar  los registros
     def list_profesion(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(Profesion).filter(Profesion.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(ProfesionAika).filter(ProfesionAika.activo == activo).offset(skip).limit(limit).all()
     def count_profesion(self, activo: bool | None = None):
-        return self.db.query(Profesion).filter(Profesion.activo == activo).count()
+        return self.db.query(ProfesionAika).filter(ProfesionAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_profesion(self, payload: ProfesionCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(Profesion).filter(
-            Profesion.nombre == payload.nombre,
-                Profesion.activo == True).first()
+        datacreate = self.db[0].query(ProfesionAika).filter(
+            ProfesionAika.nombre == payload.nombre,
+                ProfesionAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="la profesion ya existe")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de la profesion se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
-        
-        entity = Profesion(nombre=payload.nombre, area_conocimiento=payload.area_conocimiento,
-                        id_persona=tokenpayload.get("sub"), 
-                        activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+        modelos = [ProfesionAika, ProfesionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(nombre=payload.nombre, area_conocimiento=payload.area_conocimiento,
+                                id_persona=tokenpayload.get("sub"), 
+                                activo=True, created_at=datetime.utcnow())
+                self.db.add(entity)
+                self.db.commit()
+                self.db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -61,9 +67,9 @@ class ProfesionService:
     
     
     async def show(self, profesion_id: int):
-        entity = self.db.query(Profesion).filter(
-            Profesion.id == profesion_id,
-                Profesion.activo == True).first()
+        entity = self.db.query(ProfesionAika).filter(
+            ProfesionAika.id == profesion_id,
+                ProfesionAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="la profesion no fue hallada")
         if profesion_id =="":
@@ -75,13 +81,13 @@ class ProfesionService:
     async def update_profesion(self, profesion_id: int, 
                             payload: ProfesionUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(Profesion).filter(
-            Profesion.id == profesion_id,
-                Profesion.activo == True).first()
+        dataupdate = self.db[0].query(ProfesionAika).filter(
+            ProfesionAika.id == profesion_id,
+                ProfesionAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(Profesion)
-                .filter(Profesion.nombre == payload.nombre, Profesion.id != profesion_id)
+                self.db[0].query(ProfesionAika)
+                .filter(ProfesionAika.nombre == payload.nombre, ProfesionAika.id != profesion_id)
                 .first()
             )
             if existe:
@@ -98,14 +104,27 @@ class ProfesionService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+            
+        modelos = [ProfesionAika, ProfesionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == profesion_id, modelo.activo == True)
+                    .first()
+                )
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.area_conocimiento = payload.area_conocimiento
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.area_conocimiento = payload.area_conocimiento
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -123,20 +142,30 @@ class ProfesionService:
     
     # servicio para eliminar logicamente un registro
     async def delete_profesion(self, profesion_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(Profesion).filter(
-            Profesion.id == profesion_id,
-                Profesion.activo == True).first()
+        datadelete = self.db[0].query(ProfesionAika).filter(
+            ProfesionAika.id == profesion_id,
+                ProfesionAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La Profesion no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [ProfesionAika, ProfesionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == profesion_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -154,8 +183,8 @@ class ProfesionService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, profesion_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(Profesion).filter(
-            Profesion.id == profesion_id).first()
+        datareactivate = self.db[0].query(ProfesionAika).filter(
+            ProfesionAika.id == profesion_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -163,13 +192,25 @@ class ProfesionService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [ProfesionAika, ProfesionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == profesion_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

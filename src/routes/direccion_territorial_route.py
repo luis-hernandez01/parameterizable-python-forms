@@ -55,18 +55,8 @@ async def creates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    # crear registrro con uan BD y esta dependencia se agregaria asi 
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    data = []
-    
-    for db in dbs:
-        result = await DireccionterritorialService(db).create_direccion(payload, request, tokenpayload)
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await DireccionterritorialService(dbs).create_direccion(payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -85,19 +75,8 @@ async def update(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-
-# crear registrro con uan BD y esta dependencia se agregaria asi 
-# => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    
-    data = []
-    
-    for db in dbs:
-        result = await DireccionterritorialService(db).update_direccion(direccion_id, payload, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await DireccionterritorialService(dbs).update_direccion(direccion_id, payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
@@ -107,13 +86,8 @@ async def delete(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    data = []
-    for db in dbs:
-        result = await DireccionterritorialService(db).delete_direccion(direccion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await DireccionterritorialService(dbs).delete_direccion(direccion_id, request, tokenpayload)
+    return {"data": result}
 
 
 @router.post("/{direccion_id}/reactivate")
@@ -122,9 +96,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await DireccionterritorialService(db).reactivate(direccion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await DireccionterritorialService(dbs).reactivate(direccion_id, request, tokenpayload)
+    return {"data": result}

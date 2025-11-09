@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.contratos_model import Contrato
+from src.models.contratos_model import (ContratoAika, ContratoWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.contratos_schema import ContratoCreate, ContratoUpdate, LogEntityRead
 from datetime import datetime
@@ -13,8 +13,8 @@ class ContratoService:
         
     async def all(self):
         return (
-            self.db.query(Contrato)
-            .filter(Contrato.activo == True)
+            self.db.query(ContratoAika)
+            .filter(ContratoAika.activo == True)
             .all()
         )
     
@@ -22,17 +22,17 @@ class ContratoService:
         
 # servicio para listar  los registros
     def list_contrato(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(Contrato).filter(Contrato.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(ContratoAika).filter(ContratoAika.activo == activo).offset(skip).limit(limit).all()
     def count_contrato(self, activo: bool | None = None):
-        return self.db.query(Contrato).filter(Contrato.activo == activo).count()
+        return self.db.query(ContratoAika).filter(ContratoAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_contrato(self, payload: ContratoCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(Contrato).filter(
-            Contrato.numero_contrato == payload.numero_contrato,
-                Contrato.activo == True).first()
+        datacreate = self.db[0].query(ContratoAika).filter(
+            ContratoAika.numero_contrato == payload.numero_contrato,
+                ContratoAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El numero de contrato ya existe")
         if payload.numero_contrato =="":
@@ -43,31 +43,34 @@ class ContratoService:
         if payload.numero_contrato =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el modo se encuentra vacia ingresa un dato valido")
         
-        data = payload.model_dump()
         
-        try:
-            for key in [
-                "id_proyecto",
-            ]:
-                if data.get(key) == 0:
-                    data[key] = None
-                    
-            data["activo"] = True
-            data["id_persona"] = tokenpayload.get("sub")
-            data["created_at"] = datetime.utcnow()
-            entity = Contrato(**data)
+        modelos = [ContratoAika, ContratoWayra]
+        for modelo, db in zip(modelos, self.db):
+            data = payload.model_dump()
             
-            self.db.add(entity)
-            self.db.commit()
-            self.db.refresh(entity)
-        except Exception as e:
-            self.db.rollback()
-            return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail=f"Error creando el contrato: {e}")
-        
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+            try:
+                for key in [
+                    "id_proyecto",
+                ]:
+                    if data.get(key) == 0:
+                        data[key] = None
+                        
+                data["activo"] = True
+                data["id_persona"] = tokenpayload.get("sub")
+                data["created_at"] = datetime.utcnow()
+                entity = modelo(**data)
+                
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                    detail=f"Error insertando en {modelo.__table__.schema}: {e}")
+            
+            db.add(entity)
+            db.commit()
+            db.refresh(entity)
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -85,12 +88,12 @@ class ContratoService:
     
     
     async def show(self, contrato_id: int):
-        entity = self.db.query(Contrato).filter(
-            Contrato.id == contrato_id,
-                Contrato.activo == True).first()
+        entity = self.db.query(ContratoAika).filter(
+            ContratoAika.id == contrato_id,
+                ContratoAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El contrato no fue hallada")
-        if Contrato =="":
+        if contrato_id =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
                                 detail="El campo Contrato se encuentra vacia ingresa un dato valido")
         return entity
@@ -99,13 +102,13 @@ class ContratoService:
     async def update_contrato(self, contrato_id: int, 
                             payload: ContratoUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(Contrato).filter(
-            Contrato.id == contrato_id,
-                Contrato.activo == True).first()
+        dataupdate = self.db[0].query(ContratoAika).filter(
+            ContratoAika.id == contrato_id,
+                ContratoAika.activo == True).first()
         if payload.numero_contrato:
             existe = (
-                self.db.query(Contrato)
-                .filter(Contrato.numero_contrato == payload.numero_contrato, Contrato.id != contrato_id)
+                self.db[0].query(ContratoAika)
+                .filter(ContratoAika.numero_contrato == payload.numero_contrato, ContratoAika.id != contrato_id)
                 .first()
             )
             if existe:
@@ -122,21 +125,34 @@ class ContratoService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo numero de contrato no puede tener un rango mayor a 100 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
-
-        if dataupdate:
             
-            for field, value in payload.model_dump(exclude_unset=True).items():
-                # 🔍 Convierte automáticamente valores 0 en None para claves foráneas
-                if field in [
-                    "id_proyecto",
-                ] and value == 0:
-                    value = None
+        modelos = [ContratoAika, ContratoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == contrato_id, modelo.activo == True)
+                    .first()
+                )
 
-                setattr(dataupdate, field, value)
-                
-                #  Campos de auditoría
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
+                if dataupdate:
+                    
+                    for field, value in payload.model_dump(exclude_unset=True).items():
+                        # 🔍 Convierte automáticamente valores 0 en None para claves foráneas
+                        if field in [
+                            "id_proyecto",
+                        ] and value == 0:
+                            value = None
+
+                        setattr(dataupdate, field, value)
+                        
+                        #  Campos de auditoría
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -154,20 +170,30 @@ class ContratoService:
     
     # servicio para eliminar logicamente un registro
     async def delete_contrato(self, contrato_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(Contrato).filter(
-            Contrato.id == contrato_id,
-                Contrato.activo == True).first()
+        datadelete = self.db[0].query(ContratoAika).filter(
+            ContratoAika.id == contrato_id,
+                ContratoAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El contrato no fue hallado")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [ContratoAika, ContratoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == contrato_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -185,8 +211,8 @@ class ContratoService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, contrato_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(Contrato).filter(
-            Contrato.id == contrato_id).first()
+        datareactivate = self.db[0].query(ContratoAika).filter(
+            ContratoAika.id == contrato_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -194,13 +220,25 @@ class ContratoService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [ContratoAika, ContratoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == contrato_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

@@ -1,8 +1,8 @@
+from fastapi import HTTPException, status
 from datetime import datetime
-
 from sqlalchemy.orm import Session
 
-from src.models.logs_model import Log, TipoOperacionEnum
+from src.models.logs_model import (LogsAika, LogsWayra, TipoOperacionEnum)
 from src.schemas.logs_schema import LogCreate
 
 
@@ -26,19 +26,28 @@ def registrar_log(
     ip_origen: str,
     user_agent: str,
 ):
-    entity = Log(
-        tabla_afectada=tabla_afectada,
-        id_registro_afectado=id_registro_afectado,
-        tipo_operacion=tipo_operacion,
-        datos_viejos=datos_viejos,
-        datos_nuevos=datos_nuevos,
-        timestamp_operacion=datetime.utcnow(),
-        id_persona_operacion=id_persona_operacion,
-        ip_origen=ip_origen,
-        user_agent=user_agent,
-    )
-
-    self.db.add(entity)
-    self.db.commit()
-    self.db.refresh(entity)
-    return entity
+    modelos = [LogsAika, LogsWayra]
+    resultados = []
+    for modelo, db in zip(modelos, self.db):
+        try:
+            entity = modelo(
+                    tabla_afectada=tabla_afectada,
+                    id_registro_afectado=id_registro_afectado,
+                    tipo_operacion=tipo_operacion,
+                    datos_viejos=datos_viejos,
+                    datos_nuevos=datos_nuevos,
+                    timestamp_operacion=datetime.utcnow(),
+                    id_persona_operacion=id_persona_operacion,
+                    ip_origen=ip_origen,
+                    user_agent=user_agent,
+                )
+            db.add(entity)
+            db.commit()
+            db.refresh(entity)
+            # return entity
+            resultados.append(entity)
+        except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
+    return resultados

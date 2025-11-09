@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.tipos_proyecto_model import TiposProyecto
+from src.models.tipos_proyecto_model import (TiposProyectoAika, TiposProyectoWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.tiposproyectos_schema import TiposproyectosCreate, TiposproyectosUpdate, LogEntityRead
 from datetime import datetime
@@ -13,38 +13,44 @@ class TiposProyectosService:
         
     async def all(self):
         return (
-            self.db.query(TiposProyecto)
-            .filter(TiposProyecto.activo == True)
+            self.db.query(TiposProyectoAika)
+            .filter(TiposProyectoAika.activo == True)
             .all()
         )
     
         
 # servicio para listar  los registros
     def list_tipos(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(TiposProyecto).filter(TiposProyecto.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(TiposProyectoAika).filter(TiposProyectoAika.activo == activo).offset(skip).limit(limit).all()
     def count_tipos(self, activo: bool | None = None):
-        return self.db.query(TiposProyecto).filter(TiposProyecto.activo == activo).count()
+        return self.db.query(TiposProyectoAika).filter(TiposProyectoAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_tipos(self, payload: TiposproyectosCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(TiposProyecto).filter(
-            TiposProyecto.nombre == payload.nombre,
-                TiposProyecto.activo == True).first()
+        datacreate = self.db[0].query(TiposProyectoAika).filter(
+            TiposProyectoAika.nombre == payload.nombre,
+                TiposProyectoAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El tipo de proyecto ya existe")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el tipo de proyecto se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
-        
-        entity = TiposProyecto(nombre=payload.nombre, 
-                            requiere_licencia=payload.requiere_licencia, id_persona=tokenpayload.get("sub"), 
-                            activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+        modelos = [TiposProyectoAika, TiposProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(nombre=payload.nombre, 
+                                    requiere_licencia=payload.requiere_licencia, id_persona=tokenpayload.get("sub"), 
+                                    activo=True, created_at=datetime.utcnow())
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -62,9 +68,9 @@ class TiposProyectosService:
     
     
     async def show(self, tipos_id: int):
-        entity = self.db.query(TiposProyecto).filter(
-            TiposProyecto.id == tipos_id,
-                TiposProyecto.activo == True).first()
+        entity = self.db.query(TiposProyectoAika).filter(
+            TiposProyectoAika.id == tipos_id,
+                TiposProyectoAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El tipo proyecto no fue hallada")
         if tipos_id =="":
@@ -76,13 +82,13 @@ class TiposProyectosService:
     async def update_tipos(self, tipos_id: int, 
                             payload: TiposproyectosUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(TiposProyecto).filter(
-            TiposProyecto.id == tipos_id,
-                TiposProyecto.activo == True).first()
+        dataupdate = self.db[0].query(TiposProyectoAika).filter(
+            TiposProyectoAika.id == tipos_id,
+                TiposProyectoAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(TiposProyecto)
-                .filter(TiposProyecto.nombre == payload.nombre, TiposProyecto.id != tipos_id)
+                self.db[0].query(TiposProyectoAika)
+                .filter(TiposProyectoAika.nombre == payload.nombre, TiposProyectoAika.id != tipos_id)
                 .first()
             )
             if existe:
@@ -99,14 +105,27 @@ class TiposProyectosService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+            
+        modelos = [TiposProyectoAika, TiposProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == tipos_id, modelo.activo == True)
+                    .first()
+                )
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.requiere_licencia = payload.requiere_licencia
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.requiere_licencia = payload.requiere_licencia
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -124,20 +143,30 @@ class TiposProyectosService:
     
     # servicio para eliminar logicamente un registro
     async def delete_tipos(self, tipos_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(TiposProyecto).filter(
-            TiposProyecto.id == tipos_id,
-                TiposProyecto.activo == True).first()
+        datadelete = self.db[0].query(TiposProyectoAika).filter(
+            TiposProyectoAika.id == tipos_id,
+                TiposProyectoAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El tipo proyecto no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [TiposProyectoAika, TiposProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == tipos_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -155,8 +184,8 @@ class TiposProyectosService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, tipos_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(TiposProyecto).filter(
-            TiposProyecto.id == tipos_id).first()
+        datareactivate = self.db[0].query(TiposProyectoAika).filter(
+            TiposProyectoAika.id == tipos_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -164,13 +193,25 @@ class TiposProyectosService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [TiposProyectoAika, TiposProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == tipos_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

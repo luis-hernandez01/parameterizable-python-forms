@@ -63,21 +63,8 @@ async def create_unidades(
     dbs: list[Session] = Depends(lambda: next(get_session())),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-
-    # crear registrro con uan BD y esta dependencia se agregaria asi
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload,
-    # request, tokenpayload)
-
-    data = []
-
-    for db in dbs:
-        result = await UnidadEjecutoraService(db).create_unidad(
-            payload, request, tokenpayload
-        )
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await UnidadEjecutoraService(dbs).create_unidad(payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -98,21 +85,8 @@ async def update_unidades(
     dbs: list[Session] = Depends(lambda: next(get_session())),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-
-    # crear registrro con uan BD y esta dependencia se agregaria asi
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload,
-    # request, tokenpayload)
-
-    data = []
-
-    for db in dbs:
-        result = await UnidadEjecutoraService(db).update_unidad(
-            unidad_id, payload, request, tokenpayload
-        )
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await UnidadEjecutoraService(dbs).update_unidad(unidad_id, payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
@@ -124,15 +98,8 @@ async def delete_unidades(
     dbs: list[Session] = Depends(lambda: next(get_session())),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-
-    data = []
-    for db in dbs:
-        result = await UnidadEjecutoraService(db).delete_unidad(
-            unidad_id, request, tokenpayload
-        )
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await UnidadEjecutoraService(dbs).delete_unidad(unidad_id, request, tokenpayload)
+    return {"data": result}
 
 
 
@@ -142,9 +109,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await UnidadEjecutoraService(db).reactivate(unidad_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await UnidadEjecutoraService(dbs).reactivate(unidad_id, request, tokenpayload)
+    return {"data": result}

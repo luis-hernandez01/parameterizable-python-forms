@@ -11,8 +11,8 @@ class Pyoyectochema(BaseModel):
     id_tramo_sector: Optional[int]
     id_clasificacion: Optional[int]
     id_modo_transporte: Optional[int]
-    id_funcionalidad: Optional[int]
-    id_categorizacion: Optional[int]
+    
+  
     objeto_proyecto: Optional[str]
     resolucion_licencia: Optional[str]
     fecha_resolucion: Optional[date]
@@ -27,8 +27,7 @@ class proyectoCreate(BaseModel):
     id_tramo_sector: Optional[int]
     id_clasificacion: Optional[int]
     id_modo_transporte: Optional[int]
-    id_funcionalidad: Optional[int]
-    id_categorizacion: Optional[int]
+    
     objeto_proyecto: Optional[str]
     resolucion_licencia: Optional[str]
     fecha_resolucion: Optional[date]
@@ -43,8 +42,7 @@ class ProyectoUpdate(BaseModel):
     id_tramo_sector: Optional[int]
     id_clasificacion: Optional[int]
     id_modo_transporte: Optional[int]
-    id_funcionalidad: Optional[int]
-    id_categorizacion: Optional[int]
+    
     objeto_proyecto: Optional[str]
     resolucion_licencia: Optional[str]
     fecha_resolucion: Optional[date]
@@ -64,8 +62,7 @@ class LogEntityRead(BaseModel):
     id_tramo_sector: Optional[int]
     id_clasificacion: Optional[int]
     id_modo_transporte: Optional[int]
-    id_funcionalidad: Optional[int]
-    id_categorizacion: Optional[int]
+    
     objeto_proyecto: Optional[str]
     resolucion_licencia: Optional[str]
     fecha_resolucion: Optional[date]

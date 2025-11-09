@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from shapely.geometry import LineString, shape
 from shapely.ops import transform
 import pyproj
-from src.models.divipola import Departamento, Municipio
+from src.models.divipola import DepartamentoAika as Departamento, MunicipioAika as Municipio
 from src.config.config import DATA_DIR, MUNICIPIOS_GEOJSON, DEPARTAMENTOS_GEOJSON
 
 class LineService:

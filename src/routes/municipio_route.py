@@ -54,18 +54,8 @@ async def creates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    # crear registrro con uan BD y esta dependencia se agregaria asi 
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    data = []
-    
-    for db in dbs:
-        result = await MunicipioService(db).create_municipio(payload, request, tokenpayload)
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await MunicipioService(dbs).create_municipio(payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -84,19 +74,8 @@ async def update(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-
-# crear registrro con uan BD y esta dependencia se agregaria asi 
-# => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    
-    data = []
-    
-    for db in dbs:
-        result = await MunicipioService(db).update_municipio(municipio_id, payload, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await MunicipioService(dbs).update_municipio(municipio_id, payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
@@ -106,13 +85,8 @@ async def delete(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    data = []
-    for db in dbs:
-        result = await MunicipioService(db).delete_municipio(municipio_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await MunicipioService(dbs).delete_municipio(municipio_id, request, tokenpayload)
+    return {"data": result}
 
 
 @router.post("/{municipio_id}/reactivate")
@@ -121,9 +95,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await MunicipioService(db).reactivate(municipio_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await MunicipioService(dbs).reactivate(municipio_id, request, tokenpayload)
+    return {"data": result}

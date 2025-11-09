@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.divipola import Departamento
+from src.models.divipola import (DepartamentoAika, DepartamentoWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.departamento_schema import DepartamentoCreate, DepartamentoUpdate, LogEntityRead
 from datetime import datetime
@@ -13,24 +13,24 @@ class DepartamentoService:
     
     async def all(self):
         return (
-            self.db.query(Departamento)
-            .filter(Departamento.activo == True)
+            self.db.query(DepartamentoAika)
+            .filter(DepartamentoAika.activo == True)
             .all()
         )
         
 # servicio para listar  los registros
     def list_departamento(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(Departamento).filter(Departamento.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(DepartamentoAika).filter(DepartamentoAika.activo == activo).offset(skip).limit(limit).all()
     def count_departamento(self, activo: bool | None = None):
-        return self.db.query(Departamento).filter(Departamento.activo == activo).count()
+        return self.db.query(DepartamentoAika).filter(DepartamentoAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_departamento(self, payload: DepartamentoCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(Departamento).filter(
-            Departamento.nombre == payload.nombre,
-                Departamento.activo == True).first()
+        datacreate = self.db[0].query(DepartamentoAika).filter(
+            DepartamentoAika.nombre == payload.nombre,
+                DepartamentoAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El departamento ya existe")
         if payload.nombre =="":
@@ -38,12 +38,19 @@ class DepartamentoService:
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
         
-        entity = Departamento(nombre=payload.nombre, codigo=payload.codigo, 
-                            id_persona=tokenpayload.get("sub"), 
-                            activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+        modelos = [DepartamentoAika, DepartamentoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(nombre=payload.nombre, codigo=payload.codigo, 
+                                    id_persona=tokenpayload.get("sub"), 
+                                    activo=True, created_at=datetime.utcnow())
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -61,9 +68,9 @@ class DepartamentoService:
     
     
     async def show(self, departamento_id: int):
-        entity = self.db.query(Departamento).filter(
-            Departamento.id == departamento_id,
-                Departamento.activo == True).first()
+        entity = self.db.query(DepartamentoAika).filter(
+            DepartamentoAika.id == departamento_id,
+                DepartamentoAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El departamento no fue hallada")
         if departamento_id =="":
@@ -75,13 +82,13 @@ class DepartamentoService:
     async def update_departamento(self, departamento_id: int, 
                             payload: DepartamentoUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(Departamento).filter(
-            Departamento.id == departamento_id,
-                Departamento.activo == True).first()
+        dataupdate = self.db[0].query(DepartamentoAika).filter(
+            DepartamentoAika.id == departamento_id,
+                DepartamentoAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(Departamento)
-                .filter(Departamento.nombre == payload.nombre, Departamento.id != departamento_id)
+                self.db[0].query(DepartamentoAika)
+                .filter(DepartamentoAika.nombre == payload.nombre, DepartamentoAika.id != departamento_id)
                 .first()
             )
             if existe:
@@ -98,14 +105,28 @@ class DepartamentoService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+            
+        modelos = [DepartamentoAika, DepartamentoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == departamento_id, modelo.activo == True)
+                    .first()
+                )
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.codigo = payload.codigo
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.codigo = payload.codigo
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
+                    
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -123,20 +144,30 @@ class DepartamentoService:
     
     # servicio para eliminar logicamente un registro
     async def delete_departamento(self, departamento_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(Departamento).filter(
-            Departamento.id == departamento_id,
-                Departamento.activo == True).first()
+        datadelete = self.db[0].query(DepartamentoAika).filter(
+            DepartamentoAika.id == departamento_id,
+                DepartamentoAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El departamento no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [DepartamentoAika, DepartamentoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == departamento_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -154,8 +185,8 @@ class DepartamentoService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, departamento_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(Departamento).filter(
-            Departamento.id == departamento_id).first()
+        datareactivate = self.db[0].query(DepartamentoAika).filter(
+            DepartamentoAika.id == departamento_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -163,13 +194,25 @@ class DepartamentoService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
+        
+        modelos = [DepartamentoAika, DepartamentoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == departamento_id).first()
+                if not datareactivate:
+                    continue
     # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

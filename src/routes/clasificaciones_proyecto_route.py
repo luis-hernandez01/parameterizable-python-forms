@@ -35,7 +35,7 @@ def list_clasificaciones(
 ) -> Dict[str, Any]:
     skip = (page - 1) * per_page
     limit = per_page
-    data = clasificacionService(db).list_clasificacion_proyecto(activo=activo, kip=skip, limit=limit)
+    data = clasificacionService(db).list_clasificacion_proyecto(activo=activo, skip=skip, limit=limit)
     total = clasificacionService(db).count_clasificacion_proyecto(activo=activo)  
     # Método adicional para contar todos los datos
     return {
@@ -56,18 +56,8 @@ async def create_Clasificacion(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    # crear registrro con uan BD y esta dependencia se agregaria asi 
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    data = []
-    
-    for db in dbs:
-        result = await clasificacionService(db).create_clacificacion_proyecto(payload, request, tokenpayload)
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await clasificacionService(dbs).create_clacificacion_proyecto(payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -86,19 +76,8 @@ async def update_clasificacion(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-
-# crear registrro con uan BD y esta dependencia se agregaria asi 
-# => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    
-    data = []
-    
-    for db in dbs:
-        result = await clasificacionService(db).update_clasificacion_pryecto(clasificacion_id, payload, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await clasificacionService(dbs).update_clasificacion_pryecto(clasificacion_id, payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
@@ -108,13 +87,8 @@ async def delete_clasificacion(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    data = []
-    for db in dbs:
-        result = await clasificacionService(db).delete_clasificacion(clasificacion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await clasificacionService(dbs).delete_clasificacion(clasificacion_id, request, tokenpayload)
+    return {"data": result}
 
 
 @router.post("/{clasificacion_id}/reactivate")
@@ -123,9 +97,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await clasificacionService(db).reactivate(clasificacion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await clasificacionService(dbs).reactivate(clasificacion_id, request, tokenpayload)
+    return {"data": result}

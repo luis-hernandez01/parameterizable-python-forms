@@ -6,7 +6,7 @@ import os
 from typing import List, Dict, Any
 from shapely.geometry import shape, Polygon as ShapelyPolygon
 from sqlalchemy.orm import Session
-from src.models.divipola import Departamento, Municipio
+from src.models.divipola import DepartamentoAika, MunicipioAika
 from src.config.config import DATA_DIR, MUNICIPIOS_GEOJSON, DEPARTAMENTOS_GEOJSON
 
 
@@ -80,8 +80,8 @@ class PolygonAnalysisService:
 
 
                     # Buscar información en MySQL
-                    municipio_db = db.query(Municipio).filter(
-                        Municipio.codigo_municipio == cod_mpio
+                    municipio_db = db.query(MunicipioAika).filter(
+                        MunicipioAika.codigo_municipio == cod_mpio
                     ).first()
                     
                     if municipio_db:
@@ -90,8 +90,8 @@ class PolygonAnalysisService:
                         porcentaje_area = (intersection.area / municipio_geom.area) * 100
                         
                         # Obtener departamento
-                        departamento_db = db.query(Departamento).filter(
-                            Departamento.codigo == municipio_db.codigo_departamento
+                        departamento_db = db.query(DepartamentoAika).filter(
+                            DepartamentoAika.codigo == municipio_db.codigo_departamento
                         ).first()
                         
                         municipios_intersectados.append({
@@ -124,8 +124,8 @@ class PolygonAnalysisService:
                     cod_dpto = props.get('DPTO') or props.get('DPTO')
                     
                     # Buscar información en MySQL
-                    depto_db = db.query(Departamento).filter(
-                        Departamento.codigo == cod_dpto
+                    depto_db = db.query(DepartamentoAika).filter(
+                        DepartamentoAika.codigo == cod_dpto
                     ).first()
                     
                     if depto_db:

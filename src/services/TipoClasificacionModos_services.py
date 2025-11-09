@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.TipoClasificacionModos_model import TipoClasificacionModos
-from src.models.catalogomodoXtipoclasificacion_model import catalogomodoXtipoclasificacion
+from src.models.TipoClasificacionModos_model import (TipoClasificacionModosAika, TipoClasificacionModosWayra)
+from src.models.catalogomodoXtipoclasificacion_model import CatalogoModoXTipoClasificacionAika
 
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.TipoClasificacionModos_schema import (TipoClasificacionModosCreate,
@@ -16,10 +16,10 @@ class TipoClasificacionModosService:
         
     async def all(self, id_modo):
         return (
-            self.db.query(TipoClasificacionModos)
-            .join(catalogomodoXtipoclasificacion)
-            .filter(catalogomodoXtipoclasificacion.id_modo == id_modo,
-                    catalogomodoXtipoclasificacion.activo == True)
+            self.db.query(TipoClasificacionModosAika)
+            .join(CatalogoModoXTipoClasificacionAika)
+            .filter(CatalogoModoXTipoClasificacionAika.id_modo == id_modo,
+                    CatalogoModoXTipoClasificacionAika.activo == True)
             .distinct()
             .all()
         )
@@ -27,17 +27,17 @@ class TipoClasificacionModosService:
         
 # servicio para listar  los registros
     def list_tipo_clasificacion(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(TipoClasificacionModos).filter(TipoClasificacionModos.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(TipoClasificacionModosAika).filter(TipoClasificacionModosAika.activo == activo).offset(skip).limit(limit).all()
     def count_tipo_clasificacion(self, activo: bool | None = None):
-        return self.db.query(TipoClasificacionModos).filter(TipoClasificacionModos.activo == activo).count()
+        return self.db.query(TipoClasificacionModosAika).filter(TipoClasificacionModosAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_tipo_clasificacion(self, payload: TipoClasificacionModosCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(TipoClasificacionModos).filter(
-            TipoClasificacionModos.nombre == payload.nombre,
-                TipoClasificacionModos.activo == True).first()
+        datacreate = self.db[0].query(TipoClasificacionModosAika).filter(
+            TipoClasificacionModosAika.nombre == payload.nombre,
+                TipoClasificacionModosAika.activo == True).first()
         
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El tipo de clasificacion ya existe")
@@ -45,12 +45,19 @@ class TipoClasificacionModosService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
+        modelos = [TipoClasificacionModosAika, TipoClasificacionModosWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
         
-        entity = TipoClasificacionModos(nombre=payload.nombre, id_persona=tokenpayload.get("sub"), 
-                                        activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+                entity = modelo(nombre=payload.nombre, id_persona=tokenpayload.get("sub"), 
+                                                activo=True, created_at=datetime.utcnow())
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -68,9 +75,9 @@ class TipoClasificacionModosService:
     
     
     async def show(self, tipo_clacificacion_id: int):
-        entity = self.db.query(TipoClasificacionModos).filter(
-            TipoClasificacionModos.id == tipo_clacificacion_id,
-                TipoClasificacionModos.activo == True).first()
+        entity = self.db.query(TipoClasificacionModosAika).filter(
+            TipoClasificacionModosAika.id == tipo_clacificacion_id,
+                TipoClasificacionModosAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La funcionalidad no fue hallada")
         if tipo_clacificacion_id =="":
@@ -84,13 +91,13 @@ class TipoClasificacionModosService:
     async def update_tipo_clasificacion(self, tipo_clasificacion_id: int, 
                             payload: TipoClasificacionModosUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(TipoClasificacionModos).filter(
-            TipoClasificacionModos.id == tipo_clasificacion_id,
-                TipoClasificacionModos.activo == True).first()
+        dataupdate = self.db[0].query(TipoClasificacionModosAika).filter(
+            TipoClasificacionModosAika.id == tipo_clasificacion_id,
+                TipoClasificacionModosAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(TipoClasificacionModos)
-                .filter(TipoClasificacionModos.nombre == payload.nombre, TipoClasificacionModos.id != tipo_clasificacion_id)
+                self.db[0].query(TipoClasificacionModosAika)
+                .filter(TipoClasificacionModosAika.nombre == payload.nombre, TipoClasificacionModosAika.id != tipo_clasificacion_id)
                 .first()
             )
             if existe:
@@ -107,13 +114,26 @@ class TipoClasificacionModosService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+            
+        modelos = [TipoClasificacionModosAika, TipoClasificacionModosWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == tipo_clasificacion_id, modelo.activo == True)
+                    .first()
+                )
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -131,20 +151,30 @@ class TipoClasificacionModosService:
     
     # servicio para eliminar logicamente un registro
     async def delete_tipo_clasificacion(self, tipo_clasificacion_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(TipoClasificacionModos).filter(
-            TipoClasificacionModos.id == tipo_clasificacion_id,
-                TipoClasificacionModos.activo == True).first()
+        datadelete = self.db[0].query(TipoClasificacionModosAika).filter(
+            TipoClasificacionModosAika.id == tipo_clasificacion_id,
+                TipoClasificacionModosAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallado")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [TipoClasificacionModosAika, TipoClasificacionModosWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == tipo_clasificacion_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -164,8 +194,8 @@ class TipoClasificacionModosService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, tipo_clasificacion_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(TipoClasificacionModos).filter(
-            TipoClasificacionModos.id == tipo_clasificacion_id).first()
+        datareactivate = self.db[0].query(TipoClasificacionModosAika).filter(
+            TipoClasificacionModosAika.id == tipo_clasificacion_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -173,13 +203,25 @@ class TipoClasificacionModosService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [TipoClasificacionModosAika, TipoClasificacionModosWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == tipo_clasificacion_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

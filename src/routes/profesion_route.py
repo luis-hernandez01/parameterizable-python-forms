@@ -53,18 +53,8 @@ async def creates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    # crear registrro con uan BD y esta dependencia se agregaria asi 
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    data = []
-    
-    for db in dbs:
-        result = await ProfesionService(db).create_profesion(payload, request, tokenpayload)
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await ProfesionService(dbs).create_profesion(payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -83,19 +73,8 @@ async def update(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-
-# crear registrro con uan BD y esta dependencia se agregaria asi 
-# => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    
-    data = []
-    
-    for db in dbs:
-        result = await ProfesionService(db).update_profesion(profesion_id, payload, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await ProfesionService(dbs).update_profesion(profesion_id, payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
@@ -105,13 +84,8 @@ async def delete(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    data = []
-    for db in dbs:
-        result = await ProfesionService(db).delete_profesion(profesion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await ProfesionService(dbs).delete_profesion(profesion_id, request, tokenpayload)
+    return {"data": result}
 
 
 
@@ -121,9 +95,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await ProfesionService(db).reactivate(profesion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await ProfesionService(dbs).reactivate(profesion_id, request, tokenpayload)
+    return {"data": result}

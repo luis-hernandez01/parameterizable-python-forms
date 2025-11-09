@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.tramos_sectores_model import TramoSectores
+from src.models.tramos_sectores_model import (TramoSectoresAika, TramoSectoresWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.tramos_sectores_schema import TramoCreate, TramoUpdate, LogEntityRead
 from datetime import datetime
@@ -13,39 +13,45 @@ class TramoService:
         
     async def all(self, id_ruta):
         return (
-            self.db.query(TramoSectores)
-            .filter(TramoSectores.id_ruta == id_ruta,
-                    TramoSectores.activo == True)
+            self.db.query(TramoSectoresAika)
+            .filter(TramoSectoresAika.id_ruta == id_ruta,
+                    TramoSectoresAika.activo == True)
             .all()
         )
         
 # servicio para listar  los registros
     def list_tramo(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(TramoSectores).filter(TramoSectores.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(TramoSectoresAika).filter(TramoSectoresAika.activo == activo).offset(skip).limit(limit).all()
     def count_tramo(self, activo: bool | None = None):
-        return self.db.query(TramoSectores).filter(TramoSectores.activo == activo).count()
+        return self.db.query(TramoSectoresAika).filter(TramoSectoresAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_tramo(self, payload: TramoCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(TramoSectores).filter(
-            TramoSectores.nombre == payload.nombre,
-                TramoSectores.activo == True).first()
+        datacreate = self.db[0].query(TramoSectoresAika).filter(
+            TramoSectoresAika.nombre == payload.nombre,
+                TramoSectoresAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El tramo ya existe")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el tramo se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
-        
-        entity = TramoSectores(**payload.model_dump())
-        entity.id_persona=tokenpayload.get("sub")
-        entity.activo=True
-        entity.created_at=datetime.utcnow()
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+        modelos = [TramoSectoresAika, TramoSectoresWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(**payload.model_dump())
+                entity.id_persona=tokenpayload.get("sub")
+                entity.activo=True
+                entity.created_at=datetime.utcnow()
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -63,9 +69,9 @@ class TramoService:
     
     
     async def show(self, tramo_id: int):
-        entity = self.db.query(TramoSectores).filter(
-            TramoSectores.id == tramo_id,
-                TramoSectores.activo == True).first()
+        entity = self.db.query(TramoSectoresAika).filter(
+            TramoSectoresAika.id == tramo_id,
+                TramoSectoresAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El modo no fue hallada")
         if tramo_id =="":
@@ -77,13 +83,13 @@ class TramoService:
     async def update_tramo(self, tramo_id: int, 
                             payload: TramoUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(TramoSectores).filter(
-            TramoSectores.id == tramo_id,
-                TramoSectores.activo == True).first()
+        dataupdate = self.db[0].query(TramoSectoresAika).filter(
+            TramoSectoresAika.id == tramo_id,
+                TramoSectoresAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(TramoSectores)
-                .filter(TramoSectores.nombre == payload.nombre, TramoSectores.id != tramo_id)
+                self.db[0].query(TramoSectoresAika)
+                .filter(TramoSectoresAika.nombre == payload.nombre, TramoSectoresAika.id != tramo_id)
                 .first()
             )
             if existe:
@@ -100,18 +106,31 @@ class TramoService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
-
-        if dataupdate:
-            dataupdate.id_ruta = payload.id_ruta
-            dataupdate.nombre = payload.nombre
-            dataupdate.kilometraje_inicial = payload.kilometraje_inicial
-            dataupdate.kilometraje_final = payload.kilometraje_final
-            dataupdate.nombre = payload.nombre
             
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+        modelos = [TramoSectoresAika, TramoSectoresWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == tramo_id, modelo.activo == True)
+                    .first()
+                )
+
+                if dataupdate:
+                    dataupdate.id_ruta = payload.id_ruta
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.kilometraje_inicial = payload.kilometraje_inicial
+                    dataupdate.kilometraje_final = payload.kilometraje_final
+                    dataupdate.nombre = payload.nombre
+                    
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -129,20 +148,32 @@ class TramoService:
     
     # servicio para eliminar logicamente un registro
     async def delete_tramo(self, tramo_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(TramoSectores).filter(
-            TramoSectores.id == tramo_id,
-                TramoSectores.activo == True).first()
+        datadelete = self.db[0].query(TramoSectoresAika).filter(
+            TramoSectoresAika.id == tramo_id,
+                TramoSectoresAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El tramo no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [TramoSectoresAika, TramoSectoresWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == tramo_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+
+                
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -162,8 +193,8 @@ class TramoService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, tramo_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(TramoSectores).filter(
-            TramoSectores.id == tramo_id).first()
+        datareactivate = self.db[0].query(TramoSectoresAika).filter(
+            TramoSectoresAika.id == tramo_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -171,13 +202,25 @@ class TramoService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [TramoSectoresAika, TramoSectoresWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datareactivate = db.query(modelo).filter(modelo.id == tramo_id).first()
+                if not datareactivate:
+                    continue
+        
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

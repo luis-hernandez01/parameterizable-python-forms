@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from shapely.geometry import Point, shape
 from shapely.ops import transform
 import pyproj
-from src.models.divipola import Departamento, Municipio
+from src.models.divipola import DepartamentoAika, MunicipioAika
 from src.config.config import DATA_DIR, MUNICIPIOS_GEOJSON, DEPARTAMENTOS_GEOJSON
 
 class PointService:
@@ -74,14 +74,14 @@ class PointService:
                         
                         if codigo_mpio:
                             # Buscar en BD
-                            municipio_db = db.query(Municipio).filter(
-                                Municipio.codigo_municipio == codigo_mpio
+                            municipio_db = db.query(MunicipioAika).filter(
+                                MunicipioAika.codigo_municipio == codigo_mpio
                             ).first()
                             
                             if municipio_db:
                                 # Buscar departamento
-                                departamento_db = db.query(Departamento).filter(
-                                    Departamento.codigo == municipio_db.codigo_departamento
+                                departamento_db = db.query(DepartamentoAika).filter(
+                                    DepartamentoAika.codigo == municipio_db.codigo_departamento
                                 ).first()
                                 
                                 # Calcular distancia al centroide del municipio
@@ -122,9 +122,9 @@ class PointService:
         """Encuentra el municipio más cercano al punto"""
         try:
             # Obtener todos los municipios con coordenadas
-            municipios = db.query(Municipio).filter(
-                Municipio.latitud.isnot(None),
-                Municipio.longitud.isnot(None)
+            municipios = db.query(MunicipioAika).filter(
+                MunicipioAika.latitud.isnot(None),
+                MunicipioAika.longitud.isnot(None)
             ).all()
             
             min_distance = float('inf')
@@ -140,8 +140,8 @@ class PointService:
             
             if nearest_municipio:
                 # Buscar departamento
-                departamento_db = db.query(Departamento).filter(
-                    Departamento.codigo == nearest_municipio.codigo_departamento
+                departamento_db = db.query(DepartamentoAika).filter(
+                    DepartamentoAika.codigo == nearest_municipio.codigo_departamento
                 ).first()
                 
                 return {

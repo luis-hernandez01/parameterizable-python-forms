@@ -9,9 +9,11 @@ class RutasSchema(BaseModel):
 
 class RutasCreate(BaseModel):
     codigo: Optional[str]
+    nombre: str
 
 class RutasUpdate(BaseModel):
     codigo: Optional[str]
+    nombre: str
 
 class RutasResponse(RutasSchema):
     id: int

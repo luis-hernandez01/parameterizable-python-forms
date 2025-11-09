@@ -1,6 +1,7 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.catalogomodoXtipoclasificacion_model import catalogomodoXtipoclasificacion
+from src.models.catalogomodoXtipoclasificacion_model import (
+    CatalogoModoXTipoClasificacionAika, CatalogoModoXTipoClasificacionWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.catalogomodoXtipoclasificacion_schema import CatalogoCreate, CatalogoUpdate, LogEntityRead
 from datetime import datetime
@@ -13,10 +14,10 @@ class catalogoService:
         
     async def all(self, id_modo, id_tipo):
         return (
-            self.db.query(catalogomodoXtipoclasificacion)
-            .filter(catalogomodoXtipoclasificacion.activo == True,
-                    catalogomodoXtipoclasificacion.id_modo == id_modo,
-                    catalogomodoXtipoclasificacion.id_tipo_clasificacion_modos == id_tipo)
+            self.db.query(CatalogoModoXTipoClasificacionAika)
+            .filter(CatalogoModoXTipoClasificacionAika.activo == True,
+                    CatalogoModoXTipoClasificacionAika.id_modo == id_modo,
+                    CatalogoModoXTipoClasificacionAika.id_tipo_clasificacion_modos == id_tipo)
             .all()
         )
     
@@ -27,10 +28,10 @@ class catalogoService:
     
     def list_catalogo(self, skip: int, limit: int, activo: bool | None = None):
         data = (
-            self.db.query(catalogomodoXtipoclasificacion)
-            .join(catalogomodoXtipoclasificacion.modos)
-            .join(catalogomodoXtipoclasificacion.tipoclasificacion)
-            .filter(catalogomodoXtipoclasificacion.activo == activo)
+            self.db.query(CatalogoModoXTipoClasificacionAika)
+            .join(CatalogoModoXTipoClasificacionAika.modos)
+            .join(CatalogoModoXTipoClasificacionAika.tipoclasificacion)
+            .filter(CatalogoModoXTipoClasificacionAika.activo == activo)
             .offset(skip)
             .limit(limit)
             .all()
@@ -49,8 +50,8 @@ class catalogoService:
     
     
     def count_catalogo(self, activo: bool | None = None):
-        return (self.db.query(catalogomodoXtipoclasificacion)
-    .filter(catalogomodoXtipoclasificacion.activo == activo).count())
+        return (self.db.query(CatalogoModoXTipoClasificacionAika)
+    .filter(CatalogoModoXTipoClasificacionAika.activo == activo).count())
     
     
     # servicio para crear un registro
@@ -70,15 +71,24 @@ class catalogoService:
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
         
-        entity = catalogomodoXtipoclasificacion(nombre=payload.nombre, id_modo=payload.id_modo,
-                                                id_tipo_clasificacion_modos=payload.id_tipo_clasificacion_modos,
-                                                id_persona=tokenpayload.get("sub"), 
-                                        activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
         
-        # Registro de logs
+        modelos = [CatalogoModoXTipoClasificacionAika, CatalogoModoXTipoClasificacionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(nombre=payload.nombre, 
+                                id_modo=payload.id_modo,
+                                id_tipo_clasificacion_modos=payload.id_tipo_clasificacion_modos,
+                                id_persona=tokenpayload.get("sub"), 
+                                activo=True, created_at=datetime.utcnow())
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
+        
+        # # Registro de logs
         registrar_log(LogUtil(self.db),
             tabla_afectada="catalogo_modoXtipo_clasificacion",
             id_registro_afectado=entity.id,
@@ -94,9 +104,9 @@ class catalogoService:
     
     
     async def show(self, catalogo_id: int):
-        entity = self.db.query(catalogomodoXtipoclasificacion).filter(
-            catalogomodoXtipoclasificacion.id == catalogo_id,
-                catalogomodoXtipoclasificacion.activo == True).first()
+        entity = self.db.query(CatalogoModoXTipoClasificacionAika).filter(
+            CatalogoModoXTipoClasificacionAika.id == catalogo_id,
+                CatalogoModoXTipoClasificacionAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         if catalogo_id =="":
@@ -108,9 +118,9 @@ class catalogoService:
     async def update_catalogo(self, catalogo_id: int, 
                             payload: CatalogoUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(catalogomodoXtipoclasificacion).filter(
-            catalogomodoXtipoclasificacion.id == catalogo_id,
-                catalogomodoXtipoclasificacion.activo == True).first()
+        dataupdate = self.db[0].query(CatalogoModoXTipoClasificacionAika).filter(
+            CatalogoModoXTipoClasificacionAika.id == catalogo_id,
+                CatalogoModoXTipoClasificacionAika.activo == True).first()
         
         if not dataupdate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
@@ -125,13 +135,26 @@ class catalogoService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
         
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+            
+        modelos = [CatalogoModoXTipoClasificacionAika, CatalogoModoXTipoClasificacionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == catalogo_id, modelo.activo == True)
+                    .first()
+                )
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -149,20 +172,30 @@ class catalogoService:
     
     # servicio para eliminar logicamente un registro
     async def delete_catalogo(self, catalogo_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(catalogomodoXtipoclasificacion).filter(
-            catalogomodoXtipoclasificacion.id == catalogo_id,
-                catalogomodoXtipoclasificacion.activo == True).first()
+        datadelete = self.db[0].query(CatalogoModoXTipoClasificacionAika).filter(
+            CatalogoModoXTipoClasificacionAika.id == catalogo_id,
+                CatalogoModoXTipoClasificacionAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [CatalogoModoXTipoClasificacionAika, CatalogoModoXTipoClasificacionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                registro = db.query(modelo).filter(modelo.id == catalogo_id, modelo.activo == True).first()
+                if not registro:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -180,8 +213,8 @@ class catalogoService:
     
      # servicio para reactivar logicamente un registro
     async def reactivate(self, catalogo_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(catalogomodoXtipoclasificacion).filter(
-            catalogomodoXtipoclasificacion.id == catalogo_id).first()
+        datareactivate = self.db[0].query(CatalogoModoXTipoClasificacionAika).filter(
+            CatalogoModoXTipoClasificacionAika.id == catalogo_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -189,13 +222,25 @@ class catalogoService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [CatalogoModoXTipoClasificacionAika, CatalogoModoXTipoClasificacionWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == catalogo_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

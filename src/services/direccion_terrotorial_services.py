@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.direcciones_territoriales_model import DireccionesTerritoriales
+from src.models.direcciones_territoriales_model import (DireccionesTerritorialesAika, DireccionesTerritorialesWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.direccionterritorial_schema import DireccionTerritorialCreate, DireccionTerritorialUpdate, LogEntityRead
 from datetime import datetime
@@ -13,38 +13,44 @@ class DireccionterritorialService:
         
     async def all(self):
         return (
-            self.db.query(DireccionesTerritoriales)
-            .filter(DireccionesTerritoriales.activo == True)
+            self.db.query(DireccionesTerritorialesAika)
+            .filter(DireccionesTerritorialesAika.activo == True)
             .all()
         )
     
         
 # servicio para listar  los registros
     def list_direccion(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(DireccionesTerritoriales).filter(DireccionesTerritoriales.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(DireccionesTerritorialesAika).filter(DireccionesTerritorialesAika.activo == activo).offset(skip).limit(limit).all()
     def count_direccion(self, activo: bool | None = None):
-        return self.db.query(DireccionesTerritoriales).filter(DireccionesTerritoriales.activo == activo).count()
+        return self.db.query(DireccionesTerritorialesAika).filter(DireccionesTerritorialesAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_direccion(self, payload: DireccionTerritorialCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(DireccionesTerritoriales).filter(
-            DireccionesTerritoriales.nombre == payload.nombre,
-                DireccionesTerritoriales.activo == True).first()
+        datacreate = self.db[0].query(DireccionesTerritorialesAika).filter(
+            DireccionesTerritorialesAika.nombre == payload.nombre,
+                DireccionesTerritorialesAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="La direccion territorial ya existe")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el modo se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
-        
-        entity = DireccionesTerritoriales(nombre=payload.nombre,
-                                        id_persona=tokenpayload.get("sub"), 
-                                        activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+        modelos = [DireccionesTerritorialesAika, DireccionesTerritorialesWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(nombre=payload.nombre,
+                                                id_persona=tokenpayload.get("sub"), 
+                                                activo=True, created_at=datetime.utcnow())
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -62,9 +68,9 @@ class DireccionterritorialService:
     
     
     async def show(self, direccion_id: int):
-        entity = self.db.query(DireccionesTerritoriales).filter(
-            DireccionesTerritoriales.id == direccion_id,
-                DireccionesTerritoriales.activo == True).first()
+        entity = self.db.query(DireccionesTerritorialesAika).filter(
+            DireccionesTerritorialesAika.id == direccion_id,
+                DireccionesTerritorialesAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La direccion territorial no fue hallada")
         if direccion_id =="":
@@ -76,13 +82,13 @@ class DireccionterritorialService:
     async def update_direccion(self, direccion_id: int, 
                             payload: DireccionTerritorialCreate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(DireccionesTerritoriales).filter(
-            DireccionesTerritoriales.id == direccion_id,
-                DireccionesTerritoriales.activo == True).first()
+        dataupdate = self.db[0].query(DireccionesTerritorialesAika).filter(
+            DireccionesTerritorialesAika.id == direccion_id,
+                DireccionesTerritorialesAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(DireccionesTerritoriales)
-                .filter(DireccionesTerritoriales.nombre == payload.nombre, DireccionesTerritoriales.id != direccion_id)
+                self.db[0].query(DireccionesTerritorialesAika)
+                .filter(DireccionesTerritorialesAika.nombre == payload.nombre, DireccionesTerritorialesAika.id != direccion_id)
                 .first()
             )
             if existe:
@@ -99,13 +105,26 @@ class DireccionterritorialService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+            
+        modelos = [DireccionesTerritorialesAika, DireccionesTerritorialesWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == direccion_id, modelo.activo == True)
+                    .first()
+                )
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -123,20 +142,30 @@ class DireccionterritorialService:
     
     # servicio para eliminar logicamente un registro
     async def delete_direccion(self, direccion_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(DireccionesTerritoriales).filter(
-            DireccionesTerritoriales.id == direccion_id,
-                DireccionesTerritoriales.activo == True).first()
+        datadelete = self.db[0].query(DireccionesTerritorialesAika).filter(
+            DireccionesTerritorialesAika.id == direccion_id,
+                DireccionesTerritorialesAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La dieccion territorial no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [DireccionesTerritorialesAika, DireccionesTerritorialesWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == direccion_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -154,8 +183,8 @@ class DireccionterritorialService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, direccion_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(DireccionesTerritoriales).filter(
-            DireccionesTerritoriales.id == direccion_id).first()
+        datareactivate = self.db[0].query(DireccionesTerritorialesAika).filter(
+            DireccionesTerritorialesAika.id == direccion_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -163,13 +192,25 @@ class DireccionterritorialService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [DireccionesTerritorialesAika, DireccionesTerritorialesWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == direccion_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

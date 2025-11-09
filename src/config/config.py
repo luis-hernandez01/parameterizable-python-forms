@@ -2,7 +2,7 @@ import os
 from typing import Generator, List, Union
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 # Cargar variables de entorno
@@ -15,18 +15,11 @@ POSTGRES_DB = os.getenv("POSTGRES_DB")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
-# VARIABLES WAYRA
-POSTGRES_HOST1 = os.getenv("POSTGRES_HOST1", "localhost")
-POSTGRES_PORT1 = os.getenv("POSTGRES_PORT1", "5432")
-POSTGRES_DB1 = os.getenv("POSTGRES_DB1")
-POSTGRES_USER1 = os.getenv("POSTGRES_USER1")
-POSTGRES_PASSWORD1 = os.getenv("POSTGRES_PASSWORD1")
-
 
 API_KEY_ = os.getenv("API_KEY_")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
-HIDE_TES =os.getenv("ENVIRONMENT")
+HIDE_TES = os.getenv("ENVIRONMENT")
 
 # Rutas de datos
 DATA_DIR: str = "data"
@@ -36,25 +29,22 @@ DEPARTAMENTOS_GEOJSON: str = "departamentos_colombia.geojson"
 # en produccion se debe de colocar en False para que no genere problemas
 DEBUG: bool = False
 
+# SCHEMAS DIFERENTES DENTRO DE LA MISMA BASE
+SCHEMA_NAMES = ["Aika", "Wayra"]
+
 
 
 # # --- Configura las URLs dinámicamente ---
-DB_CONFIGS = [
-    
-    # servicio local
-    f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}",
-    f"postgresql+psycopg2://{POSTGRES_USER1}:{POSTGRES_PASSWORD1}"
-    f"@{POSTGRES_HOST1}:{POSTGRES_PORT1}/{POSTGRES_DB1}",
-]
+DB_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
 
 # # --- Crear engines y sesiones dinámicamente ---
-engine = [create_engine(url, echo=False, future=True) for url in DB_CONFIGS]
+
+engine = [create_engine(DB_URL, echo=False, future=True) for _ in SCHEMA_NAMES]
 sessions = [sessionmaker(autocommit=False, autoflush=False, bind=e) for e in engine]
 
-# # --- Base única para todos los modelos ---
-Base = declarative_base()
 
+Base = [declarative_base(metadata=MetaData(schema=schema)) for schema in SCHEMA_NAMES]
 
 def get_session(
     db_index: int | None = None,
@@ -64,7 +54,6 @@ def get_session(
       - Una sola sesión (si se pasa db_index)
       - Una lista de sesiones (si no se pasa)
     """
-    # Caso 1 → sesión única
     if db_index is not None:
         db = sessions[db_index]()
         try:
@@ -72,7 +61,6 @@ def get_session(
         finally:
             db.close()
     else:
-        # Caso 2 → lista de sesiones
         dbs = [Session() for Session in sessions]
         try:
             yield dbs

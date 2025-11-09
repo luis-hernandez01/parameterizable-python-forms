@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.modo_model import Modo
+from src.models.modo_model import (ModoAika, ModoWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.modo_schema import ModoCreate, ModoUpdate, LogEntityRead
 from datetime import datetime
@@ -13,37 +13,43 @@ class ModoService:
         
     async def all(self):
         return (
-            self.db.query(Modo)
-            .filter(Modo.activo == True)
+            self.db.query(ModoAika)
+            .filter(ModoAika.activo == True)
             .all()
         )
     
         
 # servicio para listar  los registros
     def list_modo(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(Modo).filter(Modo.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(ModoAika).filter(ModoAika.activo == activo).offset(skip).limit(limit).all()
     def count_modo(self, activo: bool | None = None):
-        return self.db.query(Modo).filter(Modo.activo == activo).count()
+        return self.db.query(ModoAika).filter(ModoAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_modo(self, payload: ModoCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(Modo).filter(
-            Modo.nombre == payload.nombre,
-                Modo.activo == True).first()
+        datacreate = self.db[0].query(ModoAika).filter(
+            ModoAika.nombre == payload.nombre,
+                ModoAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El modo ya existe")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el modo se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
-        
-        entity = Modo(nombre=payload.nombre, id_persona=tokenpayload.get("sub"), 
-                                        activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+        modelos = [ModoAika, ModoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(nombre=payload.nombre, id_persona=tokenpayload.get("sub"), 
+                                                activo=True, created_at=datetime.utcnow())
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -61,9 +67,9 @@ class ModoService:
     
     
     async def show(self, modo_id: int):
-        entity = self.db.query(Modo).filter(
-            Modo.id == modo_id,
-                Modo.activo == True).first()
+        entity = self.db.query(ModoAika).filter(
+            ModoAika.id == modo_id,
+                ModoAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El modo no fue hallada")
         if modo_id =="":
@@ -75,13 +81,13 @@ class ModoService:
     async def update_modo(self, modo_id: int, 
                             payload: ModoUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(Modo).filter(
-            Modo.id == modo_id,
-                Modo.activo == True).first()
+        dataupdate = self.db[0].query(ModoAika).filter(
+            ModoAika.id == modo_id,
+                ModoAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(Modo)
-                .filter(Modo.nombre == payload.nombre, Modo.id != modo_id)
+                self.db[0].query(ModoAika)
+                .filter(ModoAika.nombre == payload.nombre, ModoAika.id != modo_id)
                 .first()
             )
             if existe:
@@ -98,13 +104,23 @@ class ModoService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+        modelos = [ModoAika, ModoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = db.query(modelo).filter(modelo.id == modo_id, modelo.activo == True).first()
+                if not dataupdate:
+                    continue
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -122,20 +138,30 @@ class ModoService:
     
     # servicio para eliminar logicamente un registro
     async def delete_modo(self, modo_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(Modo).filter(
-            Modo.id == modo_id,
-                Modo.activo == True).first()
+        datadelete = self.db[0].query(ModoAika).filter(
+            ModoAika.id == modo_id,
+                ModoAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El modo no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [ModoAika, ModoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == modo_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -154,8 +180,8 @@ class ModoService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, modo_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(Modo).filter(
-            Modo.id == modo_id).first()
+        datareactivate = self.db[0].query(ModoAika).filter(
+            ModoAika.id == modo_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -163,13 +189,24 @@ class ModoService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [ModoAika, ModoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datareactivate = db.query(modelo).filter(modelo.id == modo_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

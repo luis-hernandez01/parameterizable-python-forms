@@ -55,18 +55,8 @@ async def creates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    # crear registrro con uan BD y esta dependencia se agregaria asi 
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    data = []
-    
-    for db in dbs:
-        result = await TiposProyectosService(db).create_tipos(payload, request, tokenpayload)
-        data.append(result)
-
-    return {"data": data[0]}
+     result = await TiposProyectosService(dbs).create_tipos(payload, request, tokenpayload)
+     return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -85,19 +75,9 @@ async def update(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-
-# crear registrro con uan BD y esta dependencia se agregaria asi 
-# => db: Session = Depends(lambda: next(get_session(0)))
-# return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
+    result = await TiposProyectosService(dbs).update_tipos(tipos_id, payload, request, tokenpayload)
+    return {"data": result}
     
-    
-    data = []
-    
-    for db in dbs:
-        result = await TiposProyectosService(db).update_tipos(tipos_id, payload, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
 
 
 # endpoint para eliminar un registro logicamente
@@ -107,13 +87,8 @@ async def delete(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    data = []
-    for db in dbs:
-        result = await TiposProyectosService(db).delete_tipos(tipos_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await TiposProyectosService(dbs).delete_tipos(tipos_id, request, tokenpayload)
+    return {"data": result}
 
 
 
@@ -123,9 +98,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await TiposProyectosService(db).reactivate(tipos_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await TiposProyectosService(dbs).reactivate(tipos_id, request, tokenpayload)
+    return {"data": result}

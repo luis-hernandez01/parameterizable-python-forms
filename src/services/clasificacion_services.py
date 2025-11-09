@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.clasificaciones_proyecto_model import ClasificacionesProyecto
+from src.models.clasificaciones_proyecto_model import (ClasificacionesProyectoAika, ClasificacionesProyectoWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.clasificacion_proyecto_schema import ClasificacionProyectoCreate, LogEntityRead
 from datetime import datetime
@@ -13,37 +13,43 @@ class clasificacionService:
         
     async def all(self):
         return (
-            self.db.query(ClasificacionesProyecto)
-            .filter(ClasificacionesProyecto.activo == True)
+            self.db.query(ClasificacionesProyectoAika)
+            .filter(ClasificacionesProyectoAika.activo == True)
             .all()
         )
     
         
 # servicio para listar  los registros
     def list_clasificacion_proyecto(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(ClasificacionesProyecto).filter(ClasificacionesProyecto.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(ClasificacionesProyectoAika).filter(ClasificacionesProyectoAika.activo == activo).offset(skip).limit(limit).all()
     def count_clasificacion_proyecto(self, activo: bool | None = None):
-        return self.db.query(ClasificacionesProyecto).filter(ClasificacionesProyecto.activo == activo).count()
+        return self.db.query(ClasificacionesProyectoAika).filter(ClasificacionesProyectoAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_clacificacion_proyecto(self, payload: ClasificacionProyectoCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db.query(ClasificacionesProyecto).filter(
-            ClasificacionesProyecto.nombre == payload.nombre,
-                ClasificacionesProyecto.activo == True).first()
+        datacreate = self.db[0].query(ClasificacionesProyectoAika).filter(
+            ClasificacionesProyectoAika.nombre == payload.nombre,
+                ClasificacionesProyectoAika.activo == True).first()
         if datacreate:
             return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="La clasificación ya existe")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de la clasificación se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
-        
-        entity = ClasificacionesProyecto(nombre=payload.nombre, id_persona=tokenpayload.get("sub"), 
-                                        activo=True, created_at=datetime.utcnow())
-        self.db.add(entity)
-        self.db.commit()
-        self.db.refresh(entity)
+        modelos = [ClasificacionesProyectoAika, ClasificacionesProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                entity = modelo(nombre=payload.nombre, id_persona=tokenpayload.get("sub"), 
+                                                activo=True, created_at=datetime.utcnow())
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -61,9 +67,9 @@ class clasificacionService:
     
     
     async def show(self, clasificacion_id: int):
-        entity = self.db.query(ClasificacionesProyecto).filter(
-            ClasificacionesProyecto.id == clasificacion_id,
-                ClasificacionesProyecto.activo == True).first()
+        entity = self.db.query(ClasificacionesProyectoAika).filter(
+            ClasificacionesProyectoAika.id == clasificacion_id,
+                ClasificacionesProyectoAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La clasificación no fue hallada")
         if clasificacion_id =="":
@@ -75,13 +81,13 @@ class clasificacionService:
     async def update_clasificacion_pryecto(self, clasificacion_id: int, 
                             payload: ClasificacionProyectoCreate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(ClasificacionesProyecto).filter(
-            ClasificacionesProyecto.id == clasificacion_id,
-                ClasificacionesProyecto.activo == True).first()
+        dataupdate = self.db[0].query(ClasificacionesProyectoAika).filter(
+            ClasificacionesProyectoAika.id == clasificacion_id,
+                ClasificacionesProyectoAika.activo == True).first()
         if payload.nombre:
             existe = (
-                self.db.query(ClasificacionesProyecto)
-                .filter(ClasificacionesProyecto.nombre == payload.nombre, ClasificacionesProyecto.id != clasificacion_id)
+                self.db[0].query(ClasificacionesProyectoAika)
+                .filter(ClasificacionesProyectoAika.nombre == payload.nombre, ClasificacionesProyectoAika.id != clasificacion_id)
                 .first()
             )
             if existe:
@@ -98,13 +104,26 @@ class clasificacionService:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
+            
+        modelos = [ClasificacionesProyectoAika, ClasificacionesProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == clasificacion_id, modelo.activo == True)
+                    .first()
+                )
 
-        if dataupdate:
-            dataupdate.nombre = payload.nombre
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                if dataupdate:
+                    dataupdate.nombre = payload.nombre
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -122,20 +141,30 @@ class clasificacionService:
     
     # servicio para eliminar logicamente un registro
     async def delete_clasificacion(self, clasificacion_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(ClasificacionesProyecto).filter(
-            ClasificacionesProyecto.id == clasificacion_id,
-                ClasificacionesProyecto.activo == True).first()
+        datadelete = self.db[0].query(ClasificacionesProyectoAika).filter(
+            ClasificacionesProyectoAika.id == clasificacion_id,
+                ClasificacionesProyectoAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La clasificacion no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [ClasificacionesProyectoAika, ClasificacionesProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == clasificacion_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -154,8 +183,8 @@ class clasificacionService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, clasificacion_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(ClasificacionesProyecto).filter(
-            ClasificacionesProyecto.id == clasificacion_id).first()
+        datareactivate = self.db[0].query(ClasificacionesProyectoAika).filter(
+            ClasificacionesProyectoAika.id == clasificacion_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -163,13 +192,25 @@ class clasificacionService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [ClasificacionesProyectoAika, ClasificacionesProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == clasificacion_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

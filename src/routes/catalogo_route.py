@@ -57,18 +57,21 @@ async def creates(request: Request,
                         tokenpayload: dict = Depends(verify_jwt_token)
                         # tokenpayload: dict = {"sub": 2}
                         ):
-    
-    # crear registrro con uan BD y esta dependencia se agregaria asi 
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    data = []
-    
-    for db in dbs:
-        result = await catalogoService(db).create_catalogo(payload, request, tokenpayload)
-        data.append(result)
+    result = await catalogoService(dbs).create_catalogo(payload, request, tokenpayload)
+    return {"data": result}
 
-    return {"data": data[0]}
+# @router.post("/")
+# async def creates(request: Request, 
+#                         payload: CatalogoCreate, 
+#                         # de esta manera llamo todas las bases de datos existentes
+#                         # dbs: list[Session] = Depends(lambda: next(get_session())),
+#                         dbs: Session = Depends(get_session),
+#                         tokenpayload: dict = Depends(verify_jwt_token)
+#                         # tokenpayload: dict = {"sub": 2}
+#                         ):
+    
+#     result = await catalogoService(dbs).create_catalogo(payload, request, tokenpayload)
+#     return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -87,19 +90,8 @@ async def update(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-
-# crear registrro con uan BD y esta dependencia se agregaria asi 
-# => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    
-    data = []
-    
-    for db in dbs:
-        result = await catalogoService(db).update_catalogo(catalogo_id, payload, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await catalogoService(dbs).update_catalogo(catalogo_id,payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
@@ -109,13 +101,8 @@ async def delete(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    data = []
-    for db in dbs:
-        result = await catalogoService(db).delete_catalogo(catalogo_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await catalogoService(dbs).delete_catalogo(catalogo_id, request, tokenpayload)
+    return {"data": result}
 
 @router.post("/{catalogo_id}/reactivate")
 async def reactivates(request: Request, 
@@ -123,9 +110,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await catalogoService(db).reactivate(catalogo_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await catalogoService(dbs).reactivate(catalogo_id, request, tokenpayload)
+    return {"data": result}

@@ -30,8 +30,12 @@ from src.routes import (
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
-for engines in engine:
-    Base.metadata.create_all(bind=engines)
+
+for base, eng in zip(Base, engine):
+    print(f"🛠️ Creando tablas en schema: {base.metadata.schema}")
+    base.metadata.create_all(bind=eng)
+# for engines in engine:
+#     Base.metadata.create_all(bind=engines)
 
 
 # Inicialización de la aplicación FastAPI
@@ -131,8 +135,8 @@ app.include_router(point.router)
 
 #  Documentación con Swagger/OpenAPI
 
-# if HIDE_TES == "development":
-app.mount("/", get_scalar_api_reference())
+if HIDE_TES == "development":
+    app.mount("/", get_scalar_api_reference())
 
 
 # para render por el puerto 10000

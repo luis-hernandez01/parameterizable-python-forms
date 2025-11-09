@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.Proyecto_model import Proyecto
+from src.models.Proyecto_model import (ProyectoAika, ProyectoWayra)
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.proyecto_schema import proyectoCreate, ProyectoUpdate, LogEntityRead
 from datetime import datetime
@@ -14,51 +14,53 @@ class ProyectoService:
     
     async def all(self):
         return (
-            self.db.query(Proyecto)
-            .filter(Proyecto.activo == True)
+            self.db.query(ProyectoAika)
+            .filter(ProyectoAika.activo == True)
             .all()
         )
     
         
 # servicio para listar  los registros
     def list_proyecto(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(Proyecto).filter(Proyecto.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(ProyectoAika).filter(ProyectoAika.activo == activo).offset(skip).limit(limit).all()
     def count_proyecto(self, activo: bool | None = None):
-        return self.db.query(Proyecto).filter(Proyecto.activo == activo).count()
+        return self.db.query(ProyectoAika).filter(ProyectoAika.activo == activo).count()
     
     
     # servicio para crear un registro
     async def create_proyecto(self, payload: proyectoCreate, 
                             request: Request, tokenpayload: dict):
-        data = payload.model_dump()
-        
-        try:
-            for key in [
-                "id_unidad_ejecutora",
-                "id_direccion_territorial",
-                "id_tipo_proyecto",
-                "id_ruta",
-                "id_tramo_sector",
-                "id_clasificacion",
-                "id_modo_transporte",
-                "id_tipoclasificacion_modo",
-                "catalogo",
-            ]:
-                if data.get(key) == 0:
-                    data[key] = None
-                    
-            data["activo"] = True
-            data["id_persona"] = tokenpayload.get("sub")
-            data["created_at"] = datetime.utcnow()
-            entity = Proyecto(**data)
+        modelos = [ProyectoAika, ProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            data = payload.model_dump()
             
-            self.db.add(entity)
-            self.db.commit()
-            self.db.refresh(entity)
-        except Exception as e:
-            self.db.rollback()
-            return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail=f"Error creando el proyecto: {e}")
+            try:
+                for key in [
+                    "id_unidad_ejecutora",
+                    "id_direccion_territorial",
+                    "id_tipo_proyecto",
+                    "id_ruta",
+                    "id_tramo_sector",
+                    "id_clasificacion",
+                    "id_modo_transporte",
+                    "id_tipoclasificacion_modo",
+                    "catalogo",
+                ]:
+                    if data.get(key) == 0:
+                        data[key] = None
+                        
+                data["activo"] = True
+                data["id_persona"] = tokenpayload.get("sub")
+                data["created_at"] = datetime.utcnow()
+                entity = modelo(**data)
+                
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                    detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -76,9 +78,9 @@ class ProyectoService:
     
     
     async def show(self, proyecto_id: int):
-        entity = self.db.query(Proyecto).filter(
-            Proyecto.id == proyecto_id,
-                Proyecto.activo == True).first()
+        entity = self.db.query(ProyectoAika).filter(
+            ProyectoAika.id == proyecto_id,
+                ProyectoAika.activo == True).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El proyecto no fue hallada")
         if proyecto_id =="":
@@ -90,41 +92,52 @@ class ProyectoService:
     async def update_proyecto(self, proyecto_id: int, 
                             payload: ProyectoUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db.query(Proyecto).filter(
-            Proyecto.id == proyecto_id,
-                Proyecto.activo == True).first()
+        dataupdate = self.db[0].query(ProyectoAika).filter(
+            ProyectoAika.id == proyecto_id,
+                ProyectoAika.activo == True).first()
         
         if not dataupdate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El proyecto no fue hallada")
         
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
-
-        if dataupdate:
             
-            for field, value in payload.model_dump(exclude_unset=True).items():
-                # 🔍 Convierte automáticamente valores 0 en None para claves foráneas
-                if field in [
-                    "id_unidad_ejecutora",
-                    "id_direccion_territorial",
-                    "id_tipo_proyecto",
-                    "id_ruta",
-                    "id_tramo_sector",
-                    "id_clasificacion",
-                    "id_modo_transporte",
-                    "id_tipoclasificacion_modo",
-                    "catalogo",
-                ] and value == 0:
-                    value = None
+        modelos = [ProyectoAika, ProyectoAika]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                dataupdate = (
+                    db.query(modelo)
+                    .filter(modelo.id == proyecto_id, modelo.activo == True)
+                    .first()
+                )
+                if dataupdate:
+                    for field, value in payload.model_dump(exclude_unset=True).items():
+                        # 🔍 Convierte automáticamente valores 0 en None para claves foráneas
+                        if field in [
+                            "id_unidad_ejecutora",
+                            "id_direccion_territorial",
+                            "id_tipo_proyecto",
+                            "id_ruta",
+                            "id_tramo_sector",
+                            "id_clasificacion",
+                            "id_modo_transporte",
+                            "id_tipoclasificacion_modo",
+                            "catalogo",
+                        ] and value == 0:
+                            value = None
 
-                setattr(dataupdate, field, value)
+                        setattr(dataupdate, field, value)
 
-            #  Campos de auditoría
-            dataupdate.id_persona = tokenpayload.get("sub")
-            dataupdate.updated_at = datetime.utcnow()
+                    #  Campos de auditoría
+                    dataupdate.id_persona = tokenpayload.get("sub")
+                    dataupdate.updated_at = datetime.utcnow()
 
-            self.db.commit()
-            self.db.refresh(dataupdate)
+                    db.commit()
+                    db.refresh(dataupdate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
@@ -142,20 +155,30 @@ class ProyectoService:
     
     # servicio para eliminar logicamente un registro
     async def delete_proyecto(self, proyecto_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db.query(Proyecto).filter(
-            Proyecto.id == proyecto_id,
-                Proyecto.activo == True).first()
+        datadelete = self.db[0].query(ProyectoAika).filter(
+            ProyectoAika.id == proyecto_id,
+                ProyectoAika.activo == True).first()
         if not datadelete:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El proyecto no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datadelete.activo = False
-        datadelete.deleted_at = datetime.utcnow()
-        datadelete.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datadelete)
+        modelos = [ProyectoAika, ProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                datadelete = db.query(modelo).filter(modelo.id == proyecto_id, modelo.activo == True).first()
+                if not datadelete:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datadelete.activo = False
+                datadelete.deleted_at = datetime.utcnow()
+                datadelete.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datadelete)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),
@@ -173,8 +196,8 @@ class ProyectoService:
     
     # servicio para reactivar logicamente un registro
     async def reactivate(self, proyecto_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db.query(Proyecto).filter(
-            Proyecto.id == proyecto_id).first()
+        datareactivate = self.db[0].query(ProyectoAika).filter(
+            ProyectoAika.id == proyecto_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -182,13 +205,25 @@ class ProyectoService:
             return HTTPException(status_code=status.HTTP_200_OK, detail="El registro ya se encuentra activo")
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
-    # le paso un valor false para realizar un sofdelete para un eliminado logico
-        datareactivate.activo = True
-        datareactivate.deleted_at = datetime.utcnow()
-        datareactivate.id_persona = tokenpayload.get("sub")
-        # guardar los cambios
-        self.db.commit()
-        self.db.refresh(datareactivate)
+        
+        modelos = [ProyectoAika, ProyectoWayra]
+        for modelo, db in zip(modelos, self.db):
+            try:
+                
+                datareactivate = db.query(modelo).filter(modelo.id == proyecto_id).first()
+                if not datareactivate:
+                    continue
+            # le paso un valor false para realizar un sofdelete para un eliminado logico
+                datareactivate.activo = True
+                datareactivate.deleted_at = datetime.utcnow()
+                datareactivate.id_persona = tokenpayload.get("sub")
+                # guardar los cambios
+                db.commit()
+                db.refresh(datareactivate)
+            except Exception as e:
+                db.rollback()
+                return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                detail=f"Error insertando en {modelo.__table__.schema}: {e}")
         
         
         registrar_log(LogUtil(self.db),

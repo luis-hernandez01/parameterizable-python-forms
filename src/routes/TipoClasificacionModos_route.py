@@ -59,18 +59,8 @@ async def create(request: Request,
                         tokenpayload: dict = Depends(verify_jwt_token)
                         # tokenpayload: dict = {"sub": 2}
                         ):
-    
-    # crear registrro con uan BD y esta dependencia se agregaria asi 
-    # => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
-    
-    data = []
-    
-    for db in dbs:
-        result = await TipoClasificacionModosService(db).create_tipo_clasificacion(payload, request, tokenpayload)
-        data.append(result)
-
-    return {"data": data[0]}
+    result = await TipoClasificacionModosService(dbs).create_tipo_clasificacion(payload, request, tokenpayload)
+    return {"data": result}
 
 
 # endpoint de show o ver registro
@@ -89,19 +79,9 @@ async def update_unidades(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-
-# crear registrro con uan BD y esta dependencia se agregaria asi 
-# => db: Session = Depends(lambda: next(get_session(0)))
-    # return await UnidadEjecutoraService(db).create_unidad(payload, request, tokenpayload)
+    result = await TipoClasificacionModosService(dbs).update_tipo_clasificacion(tipo_clasificacion_id, payload, request, tokenpayload)
+    return {"data": result}
     
-    
-    data = []
-    
-    for db in dbs:
-        result = await TipoClasificacionModosService(db).update_tipo_clasificacion(tipo_clasificacion_id, payload, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
 
 
 # endpoint para eliminar un registro logicamente
@@ -111,13 +91,8 @@ async def delete(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    
-    data = []
-    for db in dbs:
-        result = await TipoClasificacionModosService(db).delete_tipo_clasificacion(tipo_clasificacion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await TipoClasificacionModosService(dbs).delete_tipo_clasificacion(tipo_clasificacion_id, request, tokenpayload)
+    return {"data": result}
 
 
 @router.post("/{tipo_clasificacion_id}/reactivate")
@@ -126,9 +101,5 @@ async def reactivates(request: Request,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    data = []
-    for db in dbs:
-        result = await TipoClasificacionModosService(db).reactivate(tipo_clasificacion_id, request, tokenpayload)
-        data.append(result)
-    
-    return {"data": data[0]}
+    result = await TipoClasificacionModosService(dbs).reactivate(tipo_clasificacion_id, request, tokenpayload)
+    return {"data": result}
