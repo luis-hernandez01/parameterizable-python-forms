@@ -26,7 +26,10 @@ from src.routes import (
     line,
     point,
     trimestre_route,
-    presenta_route
+    presenta_route,
+    Unidades_factores_emision_route,
+    Combustibles_emisiones_route,
+    Categoria_emisiones_route
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
@@ -60,6 +63,12 @@ app.add_middleware(
 # Aquí se incluyen las rutas definidas en la carpeta 'routes'.
 
 app.include_router(migrador_route.router, prefix="/migrar", tags=["Migrar"])
+
+app.include_router(Combustibles_emisiones_route.router, prefix="/combustibles_emision", tags=["Combutibles"])
+app.include_router(Categoria_emisiones_route.router, prefix="/categoria_emision", tags=["Categoria vehiculo"])
+app.include_router(Unidades_factores_emision_route.router, prefix="/unidades_factor", tags=["Unidades de los factores de emisión"])
+
+
 app.include_router(trimestre_route.router, prefix="/trimestre", tags=["Trimestre"])
 app.include_router(presenta_route.router, prefix="/presenta", tags=["Presenta"])
 
