@@ -3,22 +3,22 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 
 from src.config.config import get_session
-from src.services.municipio_services import MunicipioService
-from src.schemas.municipio_schema import (PaginacionSchema, 
-                                                municipioCreate,
-                                                MunicipioUpdate)
+from src.services.alcance_services import AlcanceService
+from src.schemas.Alcance_fuentefija_schema import (PaginacionSchema, 
+                                                AlcanceCreate,
+                                                AlcanceUpdate)
 from src.utils.jwt_validator_util import verify_jwt_token
 
 # inicializacion del roter
 router = APIRouter()
 
 @router.get("/all")
-async def list_all( codigo_departamento: str,
+async def list_all(
     # de esta manera llamo solamente la primera base de datos
     db: Session = Depends(lambda: next(get_session(0))),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-    return await MunicipioService(db).all(codigo_departamento)
+    return await AlcanceService(db).all()
 
 
 # endpoint de listar data con paginacion incluida
@@ -33,8 +33,8 @@ def lista(
 ) -> Dict[str, Any]:
     skip = (page - 1) * per_page
     limit = per_page
-    data = MunicipioService(db).list_municipio(activo=activo, skip=skip, limit=limit)
-    total = MunicipioService(db).count_municipio(activo=activo)  
+    data = AlcanceService(db).listar(activo=activo, skip=skip, limit=limit)
+    total = AlcanceService(db).count(activo=activo)  
     # Método adicional para contar todos los datos
     return {
         "items": data,
@@ -50,50 +50,50 @@ def lista(
     # endpoin de crear registro
 @router.post("/")
 async def creates(request: Request, 
-                        payload: municipioCreate, 
+                        payload: AlcanceCreate, 
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await MunicipioService(dbs).create_municipio(payload, request, tokenpayload)
+    result = await AlcanceService(dbs).create(payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint de show o ver registro
-@router.get("/{municipio_id}")
-async def get_show(municipio_id: int, 
+@router.get("/{alcance_id}")
+async def get_show(alcance_id: int, 
                 db: Session = Depends(lambda: next(get_session(0))),
                 tokenpayload: dict = Depends(verify_jwt_token)):
-    return await MunicipioService(db).show(municipio_id)
+    return await AlcanceService(db).show(alcance_id)
 
 
 # endpoin para actualizar un registro x
-@router.put("/{municipio_id}")
+@router.put("/{alcance_id}")
 async def update(request: Request, 
-                        municipio_id: int,
-                        payload: MunicipioUpdate,
+                        alcance_id: int,
+                        payload: AlcanceUpdate,
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await MunicipioService(dbs).update_municipio(municipio_id, payload, request, tokenpayload)
+    result = await AlcanceService(dbs).updates(alcance_id, payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
-@router.delete("/{municipio_id}")
+@router.delete("/{alcance_id}")
 async def delete(request: Request, 
-                        municipio_id: int, 
+                        alcance_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await MunicipioService(dbs).delete_municipio(municipio_id, request, tokenpayload)
+    result = await AlcanceService(dbs).deletes(alcance_id, request, tokenpayload)
     return {"data": result}
 
 
-@router.post("/{municipio_id}/reactivate")
+@router.post("/{alcance_id}/reactivate")
 async def reactivates(request: Request, 
-                        municipio_id: int, 
+                        alcance_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
                         dbs: list[Session] = Depends(lambda: next(get_session())),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await MunicipioService(dbs).reactivate(municipio_id, request, tokenpayload)
+    result = await AlcanceService(dbs).reactivate(alcance_id, request, tokenpayload)
     return {"data": result}

@@ -1,77 +1,46 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
-from src.models.divipola import (MunicipioAika, MunicipioWayra, DepartamentoAika)
+from src.models.Alcance_fuentefija_model import (Alcance_fuentefijaAika, Alcance_fuentefijaWayra)
 from src.models.logs_model import TipoOperacionEnum
-from src.schemas.municipio_schema import municipioCreate, MunicipioUpdate, LogEntityRead
+from src.schemas.Alcance_fuentefija_schema import AlcanceCreate, AlcanceUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
 
 # Servicio para listar las unidades de ejecucion
-class MunicipioService:
+class AlcanceService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self, codigo_departamento):
+    async def all(self):
         return (
-            self.db.query(MunicipioAika)
-            .join(DepartamentoAika)
-            .filter(DepartamentoAika.codigo == codigo_departamento,
-                DepartamentoAika.activo == True)
+            self.db.query(Alcance_fuentefijaAika)
+            .filter(Alcance_fuentefijaAika.activo == True)
             .all()
         )
         
 # servicio para listar  los registros
-    def list_municipio(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(MunicipioAika).filter(MunicipioAika.activo == activo).offset(skip).limit(limit).all()
-    
-    # este codigo comentado es para mostrar el valor del campo nombre
-    # de la tabla foranea
-    # en el schema se debe de agregar el nombre de la relacion
-    
-    # def list_municipio(self, skip: int, limit: int):
-    #     municipios = (
-    #         self.db.query(Municipio)
-    #         .join(Municipio.departamento)
-    #         .filter(Municipio.activo == True)
-    #         .offset(skip)
-    #         .limit(limit)
-    #         .all()
-    #     )
-    #     return [
-    #         {
-    #             "nombre": m.nombre,
-    #             "id_departamento": m.departamento.id if m.departamento else None,
-    #             "codigo_dane": m.codigo_dane,
-    #             "departamento": m.departamento.nombre if m.departamento else None
-    #         }
-    #         for m in municipios
-    #     ]
-    
-    def count_municipio(self, activo: bool | None = None):
-        return self.db.query(MunicipioAika).filter(MunicipioAika.activo == activo).count()
-    
+    def listar(self, skip: int, limit: int, activo: bool | None = None):
+        return self.db.query(Alcance_fuentefijaAika).filter(Alcance_fuentefijaAika.activo == activo).offset(skip).limit(limit).all()
+    def count(self, activo: bool | None = None):
+        return self.db.query(Alcance_fuentefijaAika).filter(Alcance_fuentefijaAika.activo == activo).count()
     
     
     # servicio para crear un registro
-    async def create_municipio(self, payload: municipioCreate, 
+    async def create(self, payload: AlcanceCreate, 
                             request: Request, tokenpayload: dict):
-        datacreate = self.db[0].query(MunicipioAika).filter(
-            MunicipioAika.nombre_municipio == payload.nombre_municipio,
-                MunicipioAika.activo == True).first()
+        datacreate = self.db[0].query(Alcance_fuentefijaAika).filter(
+            Alcance_fuentefijaAika.nombre == payload.nombre,
+                Alcance_fuentefijaAika.activo == True).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El Municipio ya existe")
-        if payload.nombre_municipio =="":
-            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el Municipio se encuentra vacia ingresa un dato valido")
-        if len(payload.nombre_municipio) > 255:
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El registro ya existe")
+        if payload.nombre =="":
+            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre se encuentra vacia ingresa un dato valido")
+        if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
-        modelos = [MunicipioAika, MunicipioWayra]
+        modelos = [Alcance_fuentefijaAika, Alcance_fuentefijaWayra]
         for modelo, db in zip(modelos, self.db):
             try:
-                entity = modelo(nombre_municipio=payload.nombre_municipio, codigo_departamento=payload.codigo_departamento,
-                                codigo_municipio=payload.codigo_municipio, 
-                                tipo_municipio=payload.tipo_municipio,
-                                latitud=payload.latitud, longitud=payload.longitud,
-                                id_persona=tokenpayload.get("sub"), 
+                entity = modelo(nombre=payload.nombre, id_persona=tokenpayload.get("sub"), 
                                                 activo=True, created_at=datetime.utcnow())
                 db.add(entity)
                 db.commit()
@@ -83,7 +52,7 @@ class MunicipioService:
         
         # Registro de logs
         registrar_log(LogUtil(self.db),
-            tabla_afectada="municipio",
+            tabla_afectada="alcance",
             id_registro_afectado=entity.id,
             tipo_operacion=TipoOperacionEnum.INSERT.value,
             datos_nuevos=LogEntityRead.from_orm(entity).model_dump(mode="json"),
@@ -96,62 +65,56 @@ class MunicipioService:
     
     
     
-    async def show(self, municipio_id: int):
-        entity = self.db.query(MunicipioAika).filter(
-            MunicipioAika.id == municipio_id,
-                MunicipioAika.activo == True).first()
+    async def show(self, presenta_id: int):
+        entity = self.db.query(Alcance_fuentefijaAika).filter(
+            Alcance_fuentefijaAika.id == presenta_id,
+                Alcance_fuentefijaAika.activo == True).first()
         if not entity:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El Municipio no fue hallada")
-        if municipio_id =="":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
+        if presenta_id =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
-                                detail="El campo municipio_id se encuentra vacia ingresa un dato valido")
+                                detail="El campo presenta_id se encuentra vacia ingresa un dato valido")
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_municipio(self, municipio_id: int, 
-                            payload: MunicipioUpdate, 
+    async def updates(self, presenta_id: int, 
+                            payload: AlcanceUpdate, 
                             request: Request, tokenpayload: dict):
-        dataupdate = self.db[0].query(MunicipioAika).filter(
-            MunicipioAika.id == municipio_id,
-                MunicipioAika.activo == True).first()
-        if payload.nombre_municipio:
+        dataupdate = self.db[0].query(Alcance_fuentefijaAika).filter(
+            Alcance_fuentefijaAika.id == presenta_id,
+                Alcance_fuentefijaAika.activo == True).first()
+        if payload.nombre:
             existe = (
-                self.db[0].query(MunicipioAika)
-                .filter(MunicipioAika.nombre_municipio == payload.nombre_municipio, MunicipioAika.id != municipio_id)
+                self.db[0].query(Alcance_fuentefijaAika)
+                .filter(Alcance_fuentefijaAika.nombre == payload.nombre, Alcance_fuentefijaAika.id != presenta_id)
                 .first()
             )
             if existe:
                 return HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El nombre '{payload.nombre_municipio}' ya está siendo usado por otro Municipio."
+                    detail=f"El nombre '{payload.nombre}' ya está siendo usado por otro registro."
                 )
         
         if not dataupdate:
-            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El Municipio no fue hallada")
-        if payload.nombre_municipio =="":
-            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el Municipio se encuentra vacia ingresa un dato valido")
-        if len(payload.nombre_municipio) > 255:
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
+        if payload.nombre =="":
+            return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre se encuentra vacia ingresa un dato valido")
+        if len(payload.nombre) > 255:
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre no puede tener un rango mayor a 255 caracteres")
             
         datos_viejos = LogEntityRead.from_orm(dataupdate).model_dump(mode="json")
             
-        modelos = [MunicipioAika, MunicipioWayra]
+        modelos = [Alcance_fuentefijaAika, Alcance_fuentefijaWayra]
         for modelo, db in zip(modelos, self.db):
             try:
                 dataupdate = (
                     db.query(modelo)
-                    .filter(modelo.id == municipio_id, modelo.activo == True)
+                    .filter(modelo.id == presenta_id, modelo.activo == True)
                     .first()
                 )
 
                 if dataupdate:
-                    dataupdate.codigo_departamento = payload.codigo_departamento
-                    dataupdate.codigo_municipio = payload.codigo_municipio
-                    dataupdate.nombre_municipio = payload.nombre_municipio
-                    dataupdate.tipo_municipio = payload.tipo_municipio
-                    dataupdate.latitud = payload.latitud
-                    dataupdate.longitud = payload.longitud
-                    
+                    dataupdate.nombre = payload.nombre
                     dataupdate.id_persona = tokenpayload.get("sub")
                     dataupdate.updated_at = datetime.utcnow()
                     db.commit()
@@ -163,7 +126,7 @@ class MunicipioService:
             
             # Registro de logs
         registrar_log(LogUtil(self.db),
-            tabla_afectada="municipio",
+            tabla_afectada="alcance",
             id_registro_afectado=dataupdate.id,
             tipo_operacion=TipoOperacionEnum.UPDATE.value,
             datos_nuevos=LogEntityRead.from_orm(dataupdate).model_dump(mode="json"),
@@ -176,18 +139,18 @@ class MunicipioService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_municipio(self, municipio_id: int, request: Request, tokenpayload: dict):
-        datadelete = self.db[0].query(MunicipioAika).filter(
-            MunicipioAika.id == municipio_id,
-                MunicipioAika.activo == True).first()
+    async def deletes(self, presenta_id: int, request: Request, tokenpayload: dict):
+        datadelete = self.db[0].query(Alcance_fuentefijaAika).filter(
+            Alcance_fuentefijaAika.id == presenta_id,
+                Alcance_fuentefijaAika.activo == True).first()
         if not datadelete:
-            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El Municipio no fue hallada")
+            return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
         datos_viejos = LogEntityRead.from_orm(datadelete).model_dump(mode="json")
-        modelos = [MunicipioAika, MunicipioWayra]
+        modelos = [Alcance_fuentefijaAika, Alcance_fuentefijaWayra]
         for modelo, db in zip(modelos, self.db):
             try:
-                datadelete = db.query(modelo).filter(modelo.id == municipio_id, modelo.activo == True).first()
+                datadelete = db.query(modelo).filter(modelo.id == presenta_id, modelo.activo == True).first()
                 if not datadelete:
                     continue
             # le paso un valor false para realizar un sofdelete para un eliminado logico
@@ -201,11 +164,10 @@ class MunicipioService:
                 db.rollback()
                 return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
                                 detail=f"Error insertando en {modelo.__table__.schema}: {e}")
-                
         
         
         registrar_log(LogUtil(self.db),
-            tabla_afectada="municipio",
+            tabla_afectada="alcance",
             id_registro_afectado=datadelete.id,
             tipo_operacion=TipoOperacionEnum.DELETE.value,
             datos_nuevos=LogEntityRead.from_orm(datadelete).model_dump(mode="json"),
@@ -218,9 +180,9 @@ class MunicipioService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, municipio_id: int, request: Request, tokenpayload: dict):
-        datareactivate = self.db[0].query(MunicipioAika).filter(
-            MunicipioAika.id == municipio_id).first()
+    async def reactivate(self, presenta_id: int, request: Request, tokenpayload: dict):
+        datareactivate = self.db[0].query(Alcance_fuentefijaAika).filter(
+            Alcance_fuentefijaAika.id == presenta_id).first()
         if not datareactivate:
             return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El registro no fue hallada")
         
@@ -229,10 +191,11 @@ class MunicipioService:
         
         datos_viejos = LogEntityRead.from_orm(datareactivate).model_dump(mode="json")
         
-        modelos = [MunicipioAika, MunicipioWayra]
+        modelos = [Alcance_fuentefijaAika, Alcance_fuentefijaWayra]
         for modelo, db in zip(modelos, self.db):
             try:
-                datareactivate = db.query(modelo).filter(modelo.id == municipio_id).first()
+                
+                datareactivate = db.query(modelo).filter(modelo.id == presenta_id).first()
                 if not datareactivate:
                     continue
             # le paso un valor false para realizar un sofdelete para un eliminado logico
@@ -249,7 +212,7 @@ class MunicipioService:
         
         
         registrar_log(LogUtil(self.db),
-            tabla_afectada="municipios",
+            tabla_afectada="alcance",
             id_registro_afectado=datareactivate.id,
             tipo_operacion=TipoOperacionEnum.REACTIVATE,
             datos_nuevos=LogEntityRead.from_orm(datareactivate).model_dump(mode="json"),

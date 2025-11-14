@@ -29,7 +29,10 @@ from src.routes import (
     presenta_route,
     Unidades_factores_emision_route,
     Combustibles_emisiones_route,
-    Categoria_emisiones_route
+    Categoria_emisiones_route,
+    upload_router,
+    Categoria_fuentefija_route,
+    Alcance_fuentefija_rouete
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
@@ -61,8 +64,10 @@ app.add_middleware(
 
 # registrando mis rutas existentes de las difrentes APIs
 # Aquí se incluyen las rutas definidas en la carpeta 'routes'.
-
 app.include_router(migrador_route.router, prefix="/migrar", tags=["Migrar"])
+
+app.include_router(Categoria_fuentefija_route.router, prefix="/categoria_fuentefija", tags=["Categoria fuentes fijas"])
+app.include_router(Alcance_fuentefija_rouete.router, prefix="/alcance_funtefija", tags=["Alcance fuentes fijas"])
 
 app.include_router(Combustibles_emisiones_route.router, prefix="/combustibles_emision", tags=["Combutibles"])
 app.include_router(Categoria_emisiones_route.router, prefix="/categoria_emision", tags=["Categoria vehiculo"])

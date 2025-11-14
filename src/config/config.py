@@ -40,28 +40,52 @@ DB_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_H
 
 # # --- Crear engines y sesiones dinámicamente ---
 
-engine = [create_engine(DB_URL, echo=False, future=True) for _ in SCHEMA_NAMES]
-sessions = [sessionmaker(autocommit=False, autoflush=False, bind=e) for e in engine]
+ENGINE_OPTIONS = dict(
+    echo=False,
+        future=True,
+        pool_size=50,          # antes 5
+        max_overflow=50,       # antes 10
+        pool_timeout=60,       # tiempo máximo antes de dar timeout
+        pool_recycle=1800,     # evita conexiones muertas
+        pool_pre_ping=True
+)
+
+engine = [
+    create_engine(DB_URL, **ENGINE_OPTIONS)
+    for _ in SCHEMA_NAMES
+]
+
+sessions = [
+    sessionmaker(bind=e, autocommit=False, autoflush=False)
+    for e in engine
+]
+
+Base = [
+    declarative_base(metadata=MetaData(schema=schema))
+    for schema in SCHEMA_NAMES
+]
+
+def reset_all_pools():
+    for i, schema in enumerate(SCHEMA_NAMES):
+        engine[i].pool.dispose()
+        # print(f"🔄 Pool reseteado para schema: {schema}")
 
 
-Base = [declarative_base(metadata=MetaData(schema=schema)) for schema in SCHEMA_NAMES]
+
 
 def get_session(
     db_index: int | None = None,
 ) -> Generator[Union[Session, List[Session]], None, None]:
-    """
-    Devuelve:
-      - Una sola sesión (si se pasa db_index)
-      - Una lista de sesiones (si no se pasa)
-    """
+
     if db_index is not None:
         db = sessions[db_index]()
         try:
             yield db
         finally:
             db.close()
+
     else:
-        dbs = [Session() for Session in sessions]
+        dbs = [session_factory() for session_factory in sessions]
         try:
             yield dbs
         finally:
