@@ -29,8 +29,7 @@ dparse==0.6.4
 ecdsa==0.19.1
 et_xmlfile==2.0.0
 executing==2.2.1
-# fastapi==0.118.0
-fastapi==0.115.6
+fastapi==0.118.0
 fastjsonschema==2.21.2
 filelock==3.19.1
 flake8==7.3.0
@@ -106,15 +105,13 @@ pure_eval==0.2.3
 pyasn1==0.6.1
 pycodestyle==2.14.0
 pycparser==2.23
-# pydantic==2.12.0
-pydantic==2.8.2
-# pydantic_core==2.41.1
-pydantic-core==2.14.6
+pydantic==2.12.0
+pydantic_core==2.41.1
 pyee==13.0.0
 pyflakes==3.4.0
 Pygments==2.19.2
 pyparsing==3.2.5
-# pyproj==3.7.2
+pyproj==3.7.2
 pyproj==3.6.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
@@ -123,7 +120,7 @@ python-json-logger==4.0.0
 python-multipart==0.0.20
 pytokens==0.1.10
 pytz==2025.2
-pywinpty==3.0.2
+# pywinpty==3.0.2
 PyYAML==6.0.3
 pyzmq==27.1.0
 referencing==0.37.0
