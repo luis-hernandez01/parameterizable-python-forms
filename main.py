@@ -30,18 +30,17 @@ from src.routes import (
     Unidades_factores_emision_route,
     Combustibles_emisiones_route,
     Categoria_emisiones_route,
-    upload_router,
     Categoria_fuentefija_route,
-    Alcance_fuentefija_rouete
+    Alcance_fuentefija_rouete,
+    informe_route,
+    calculos_excel_route
 )
 
 # # --- Crear tablas en todas las bases parametrizadas ---
 
-for base, eng in zip(Base, engine):
-    print(f"🛠️ Creando tablas en schema: {base.metadata.schema}")
-    base.metadata.create_all(bind=eng)
-# for engines in engine:
-#     Base.metadata.create_all(bind=engines)
+# for base, eng in zip(Base, engine):
+#     print(f"🛠️ Creando tablas en schema: {base.metadata.schema}")
+#     base.metadata.create_all(bind=eng)
 
 
 # Inicialización de la aplicación FastAPI
@@ -66,6 +65,9 @@ app.add_middleware(
 # Aquí se incluyen las rutas definidas en la carpeta 'routes'.
 app.include_router(migrador_route.router, prefix="/migrar", tags=["Migrar"])
 
+app.include_router(informe_route.router, prefix="/informes", tags=["Informes"])
+app.include_router(calculos_excel_route.router, prefix="/calculos", tags=["calculos excel"])
+
 app.include_router(Categoria_fuentefija_route.router, prefix="/categoria_fuentefija", tags=["Categoria fuentes fijas"])
 app.include_router(Alcance_fuentefija_rouete.router, prefix="/alcance_funtefija", tags=["Alcance fuentes fijas"])
 
@@ -74,7 +76,7 @@ app.include_router(Categoria_emisiones_route.router, prefix="/categoria_emision"
 app.include_router(Unidades_factores_emision_route.router, prefix="/unidades_factor", tags=["Unidades de los factores de emisión"])
 
 
-app.include_router(trimestre_route.router, prefix="/trimestre", tags=["Trimestre"])
+# app.include_router(trimestre_route.router, prefix="/trimestre", tags=["Trimestre"])
 app.include_router(presenta_route.router, prefix="/presenta", tags=["Presenta"])
 
 app.include_router(
@@ -149,14 +151,28 @@ app.include_router(point.router)
 
 #  Documentación con Swagger/OpenAPI
 
-if HIDE_TES == "development":
-    app.mount("/", get_scalar_api_reference())
+# if HIDE_TES == "development":
+app.mount("/", get_scalar_api_reference())
 
 
 # para render por el puerto 10000
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", 
-                host="0.0.0.0", 
-                port=10000, 
-                reload=DEBUG)
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run("main:app", 
+#                 host="0.0.0.0", 
+#                 port=10000, 
+#                 reload=DEBUG)
+
+
+
+import subprocess
+
+# import os
+# import subprocess
+
+# def install_playwright_if_needed():
+#     # Ejecutar solo si no existe Chromium
+#     if not os.path.exists(os.path.expanduser("~/.cache/ms-playwright")):
+#         subprocess.run(["python", "-m", "playwright", "install", "chromium"], check=False)
+
+# install_playwright_if_needed()
