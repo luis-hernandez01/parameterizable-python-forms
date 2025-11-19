@@ -13,6 +13,7 @@ class MunicipioSchema(BaseModel):
     latitud: Optional[float] = Field(default=None, description="Latitud del municipio")
     longitud: Optional[float] = Field(default=None, description="Longitud del municipio")
     # departamento: Optional[str]
+    activo: bool
 
 
 

@@ -5,35 +5,35 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.trimestre_schema import TrimestreCreate, TrimestreUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
-
+from sqlalchemy import asc
 # Servicio para listar las unidades de ejecucion
 class TrimestreService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(TrimestreAika)
             .filter(TrimestreAika.activo == True)
+            .order_by(asc(TrimestreAika.nombre))
             .all()
         )
     
         
 # servicio para listar  los registros
     def listar(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(TrimestreAika).filter(TrimestreAika.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(TrimestreAika).filter(TrimestreAika.activo == activo).order_by(asc(TrimestreAika.nombre)).offset(skip).limit(limit).all()
     def count(self, activo: bool | None = None):
         return self.db.query(TrimestreAika).filter(TrimestreAika.activo == activo).count()
     
     
     # servicio para crear un registro
-    async def create(self, payload: TrimestreCreate, 
+    def create(self, payload: TrimestreCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(TrimestreAika).filter(
-            TrimestreAika.nombre == payload.nombre,
-                TrimestreAika.activo == True).first()
+            TrimestreAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El registro ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -69,7 +69,7 @@ class TrimestreService:
     
     
     
-    async def show(self, trimestre_id: int):
+    def show(self, trimestre_id: int):
         entity = self.db.query(TrimestreAika).filter(
             TrimestreAika.id == trimestre_id,
                 TrimestreAika.activo == True).first()
@@ -81,7 +81,7 @@ class TrimestreService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def updates(self, trimestre_id: int, 
+    def updates(self, trimestre_id: int, 
                             payload: TrimestreUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(TrimestreAika).filter(
@@ -140,7 +140,7 @@ class TrimestreService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_modo(self, trimestre_id: int, request: Request, tokenpayload: dict):
+    def delete_modo(self, trimestre_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(TrimestreAika).filter(
             TrimestreAika.id == trimestre_id,
                 TrimestreAika.activo == True).first()
@@ -185,7 +185,7 @@ class TrimestreService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, trimestre_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, trimestre_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(TrimestreAika).filter(
             TrimestreAika.id == trimestre_id).first()
         if not datareactivate:

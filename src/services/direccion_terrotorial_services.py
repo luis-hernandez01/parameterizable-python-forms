@@ -5,35 +5,57 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.direccionterritorial_schema import DireccionTerritorialCreate, DireccionTerritorialUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class DireccionterritorialService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(DireccionesTerritorialesAika)
             .filter(DireccionesTerritorialesAika.activo == True)
+            .order_by(asc(DireccionesTerritorialesAika.nombre))
             .all()
         )
     
         
 # servicio para listar  los registros
-    def list_direccion(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(DireccionesTerritorialesAika).filter(DireccionesTerritorialesAika.activo == activo).offset(skip).limit(limit).all()
-    def count_direccion(self, activo: bool | None = None):
-        return self.db.query(DireccionesTerritorialesAika).filter(DireccionesTerritorialesAika.activo == activo).count()
+    def list_direccion(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(DireccionesTerritorialesAika)
+        if activo is not None:
+            query = query.filter(DireccionesTerritorialesAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(DireccionesTerritorialesAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(DireccionesTerritorialesAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
+    def count_direccion(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(DireccionesTerritorialesAika)
+
+        if activo is not None:
+            query = query.filter(DireccionesTerritorialesAika.activo == activo)
+
+        if filtros:
+            query = query.filter(DireccionesTerritorialesAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_direccion(self, payload: DireccionTerritorialCreate, 
+    def create_direccion(self, payload: DireccionTerritorialCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(DireccionesTerritorialesAika).filter(
-            DireccionesTerritorialesAika.nombre == payload.nombre,
-                DireccionesTerritorialesAika.activo == True).first()
+            DireccionesTerritorialesAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="La direccion territorial ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el modo se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -67,7 +89,7 @@ class DireccionterritorialService:
     
     
     
-    async def show(self, direccion_id: int):
+    def show(self, direccion_id: int):
         entity = self.db.query(DireccionesTerritorialesAika).filter(
             DireccionesTerritorialesAika.id == direccion_id,
                 DireccionesTerritorialesAika.activo == True).first()
@@ -79,7 +101,7 @@ class DireccionterritorialService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_direccion(self, direccion_id: int, 
+    def update_direccion(self, direccion_id: int, 
                             payload: DireccionTerritorialCreate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(DireccionesTerritorialesAika).filter(
@@ -141,7 +163,7 @@ class DireccionterritorialService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_direccion(self, direccion_id: int, request: Request, tokenpayload: dict):
+    def delete_direccion(self, direccion_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(DireccionesTerritorialesAika).filter(
             DireccionesTerritorialesAika.id == direccion_id,
                 DireccionesTerritorialesAika.activo == True).first()
@@ -182,7 +204,7 @@ class DireccionterritorialService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, direccion_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, direccion_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(DireccionesTerritorialesAika).filter(
             DireccionesTerritorialesAika.id == direccion_id).first()
         if not datareactivate:

@@ -5,6 +5,7 @@ from datetime import datetime
 class ModoSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 class ModoCreate(BaseModel):
     nombre: str

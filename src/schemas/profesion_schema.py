@@ -8,6 +8,8 @@ class ProfesionSchema(BaseModel):
     id: int
     nombre: str
     area_conocimiento: Optional[str]
+    activo: bool
+    
 
 
 class ProfesionCreate(BaseModel):

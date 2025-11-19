@@ -21,6 +21,7 @@ class ContratoSchema(BaseModel):
     fecha_terminacion: Optional[date]
     valor_contrato: Optional[Decimal]
     recursos_sostenibilidad: Optional[Decimal]
+    activo: bool
     
     @field_validator("tipo_contrato", mode="before")
     def validar_tipo_contrato(cls, v):

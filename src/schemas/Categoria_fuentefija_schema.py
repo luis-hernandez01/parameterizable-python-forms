@@ -8,6 +8,7 @@ class Categoria_fSchema(BaseModel):
 
 class Categoria_fCreate(BaseModel):
     nombre: str
+    activo: bool
 
 class Categoria_fUpdate(BaseModel):
     nombre: str

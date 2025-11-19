@@ -7,6 +7,7 @@ class Catalogoschema(BaseModel):
     nombre: str
     modos: Optional[str]
     tipoclasificacion: Optional[str]
+    activo: bool
 
 class CatalogoCreate(BaseModel):
     nombre: str

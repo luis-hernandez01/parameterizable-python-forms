@@ -5,6 +5,7 @@ from datetime import datetime
 class PresentaSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 class PresentaCreate(BaseModel):
     nombre: str

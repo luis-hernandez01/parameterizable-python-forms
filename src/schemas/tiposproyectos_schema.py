@@ -6,6 +6,7 @@ class TiposproyectosSchema(BaseModel):
     id: int
     nombre: str
     requiere_licencia: bool
+    activo: bool
 
 class TiposproyectosCreate(BaseModel):
     nombre: str

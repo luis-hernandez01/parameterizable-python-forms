@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class CategoriaSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 
 class CategoriaCreate(BaseModel):

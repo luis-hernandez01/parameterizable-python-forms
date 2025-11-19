@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class CombustibleSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 
 class CombustibleCreate(BaseModel):

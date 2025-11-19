@@ -7,7 +7,7 @@ from src.models.logs_model import TipoOperacionEnum
 from src.models.unidades_factores_emision_model import (Unidades_factores_emisionAika, Unidades_factores_emisionWayra)
 from src.schemas.Unidades_factores_emision_schema import LogEntityRead, UnidadFactorCreate, UnidadFactorUpdate
 from src.utils.logs_util import LogUtil, registrar_log
-
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class UnidadfactorService:
@@ -15,46 +15,57 @@ class UnidadfactorService:
         self.db = db
     
     
-    async def all(self):
+    def all(self):
         return (
             self.db.query(Unidades_factores_emisionAika)
             .filter(Unidades_factores_emisionAika.activo == True)
+            .order_by(asc(Unidades_factores_emisionAika.nombre))
             .all()
         )
         
 
     # servicio para listar  los registros
-    def lista(self, skip: int, limit: int, activo: bool | None = None):
-        return (
-            self.db.query(Unidades_factores_emisionAika)
-            .filter(Unidades_factores_emisionAika.activo == activo)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+    def lista(self, skip: int, limit: int, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(Unidades_factores_emisionAika)
+        if activo is not None:
+            query = query.filter(Unidades_factores_emisionAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(Unidades_factores_emisionAika.nombre.ilike(f"%{filtros}%"))
+            
+        return ( query.order_by(asc(Unidades_factores_emisionAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
 
-    def count(self, activo: bool | None = None):
-        return (
-            self.db.query(Unidades_factores_emisionAika)
-            .filter(Unidades_factores_emisionAika.activo == activo)
-            .count()
-        )
+    def count(self, activo: bool | None = None,
+        filtros: str | None = None):
+        query = self.db.query(Unidades_factores_emisionAika)
+
+        if activo is not None:
+            query = query.filter(Unidades_factores_emisionAika.activo == activo)
+
+        if filtros:
+            query = query.filter(Unidades_factores_emisionAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
 
 #     # servicio para crear un registro
-    async def create(
+    def create(
         self, payload: UnidadFactorCreate, request: Request, tokenpayload: dict
     ):
         unidadcreate = (
             self.db[0].query(Unidades_factores_emisionAika)
             .filter(
-                Unidades_factores_emisionAika.nombre == payload.nombre, Unidades_factores_emisionAika.activo == True
+                Unidades_factores_emisionAika.nombre == payload.nombre
             )
             .first()
         )
         if unidadcreate:
             return HTTPException(
                 status_code=status.HTTP_304_NOT_MODIFIED,
-                detail="La unidad ejecutora ya existe",
+                detail="Este registro ya se encuentra creado. Se requiere su reactivación.",
             )
         if payload.nombre == "":
             return HTTPException(
@@ -98,7 +109,7 @@ class UnidadfactorService:
 
         
 
-    async def show(self, unidadfactor_id: int):
+    def show(self, unidadfactor_id: int):
         entity = (
             self.db.query(Unidades_factores_emisionAika)
             .filter(Unidades_factores_emisionAika.id == unidadfactor_id, Unidades_factores_emisionAika.activo == True)
@@ -117,7 +128,7 @@ class UnidadfactorService:
         return entity
 
 #     # servicio para editar logicamente un registro
-    async def update(
+    def update(
         self,
         unidadfactor_id: int,
         payload: UnidadFactorUpdate,
@@ -199,7 +210,7 @@ class UnidadfactorService:
         
 
     # servicio para eliminar logicamente un registro
-    async def delete(self, unidadfactor_id: int, request: Request, tokenpayload: dict):
+    def delete(self, unidadfactor_id: int, request: Request, tokenpayload: dict):
         datadelete = (
             self.db[0].query(Unidades_factores_emisionAika)
             .filter(Unidades_factores_emisionAika.id == unidadfactor_id, Unidades_factores_emisionAika.activo == True)
@@ -249,7 +260,7 @@ class UnidadfactorService:
 
 
 # servicio para reactivar logicamente un registro
-    async def reactivate(self, unidadfactor_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, unidadfactor_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(Unidades_factores_emisionAika).filter(
             Unidades_factores_emisionAika.id == unidadfactor_id).first()
         if not datareactivate:

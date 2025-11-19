@@ -2,22 +2,27 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
 from src.models.catalogomodoXtipoclasificacion_model import (
     CatalogoModoXTipoClasificacionAika, CatalogoModoXTipoClasificacionWayra)
+from src.models.modo_model import ModoAika
+from src.models.TipoClasificacionModos_model import TipoClasificacionModosAika
+
 from src.models.logs_model import TipoOperacionEnum
 from src.schemas.catalogomodoXtipoclasificacion_schema import CatalogoCreate, CatalogoUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc, or_
 
 # Servicio para listar las unidades de ejecucion
 class catalogoService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self, id_modo, id_tipo):
+    def all(self, id_modo, id_tipo):
         return (
             self.db.query(CatalogoModoXTipoClasificacionAika)
             .filter(CatalogoModoXTipoClasificacionAika.activo == True,
                     CatalogoModoXTipoClasificacionAika.id_modo == id_modo,
                     CatalogoModoXTipoClasificacionAika.id_tipo_clasificacion_modos == id_tipo)
+            .order_by(asc(CatalogoModoXTipoClasificacionAika.nombre))
             .all()
         )
     
@@ -26,16 +31,67 @@ class catalogoService:
     # def list_catalogo(self, skip: int, limit: int):
     #     return self.db.query(catalogomodoXtipoclasificacion).filter(catalogomodoXtipoclasificacion.activo == True).offset(skip).limit(limit).all()
     
-    def list_catalogo(self, skip: int, limit: int, activo: bool | None = None):
-        data = (
+    # def list_catalogo(self, skip: int, limit: int, activo: bool | None = None):
+    #     data = (
+    #         self.db.query(CatalogoModoXTipoClasificacionAika)
+    #         .join(CatalogoModoXTipoClasificacionAika.modos)
+    #         .join(CatalogoModoXTipoClasificacionAika.tipoclasificacion)
+    #         .order_by(asc(CatalogoModoXTipoClasificacionAika.nombre))
+    #         .filter(CatalogoModoXTipoClasificacionAika.activo == activo)
+    #         .offset(skip)
+    #         .limit(limit)
+    #         .all()
+    #     )
+    #     return [
+    #         {
+    #             "id": rw.id,
+    #             "nombre": rw.nombre,
+    #             "id_modo": rw.modos.id if rw.modos else None,
+    #             "id_tipo_clasificacion_modos": rw.tipoclasificacion.id if rw.tipoclasificacion else None,
+    #             "modos": rw.modos.nombre if rw.modos else None,
+    #             "tipoclasificacion": rw.tipoclasificacion.nombre if rw.tipoclasificacion else None
+    #         }
+    #         for rw in data
+    #     ]
+    
+    
+
+    def list_catalogo(
+        self,
+        skip: int,
+        limit: int,
+        activo: bool | None = None,
+        filtros: str | None = None
+    ):
+        query = (
             self.db.query(CatalogoModoXTipoClasificacionAika)
             .join(CatalogoModoXTipoClasificacionAika.modos)
             .join(CatalogoModoXTipoClasificacionAika.tipoclasificacion)
-            .filter(CatalogoModoXTipoClasificacionAika.activo == activo)
-            .offset(skip)
-            .limit(limit)
-            .all()
+            .order_by(asc(CatalogoModoXTipoClasificacionAika.nombre))
         )
+
+        # Filtro por activo (opcional)
+        if activo is not None:
+            query = query.filter(CatalogoModoXTipoClasificacionAika.activo == activo)
+
+        # FILTRO GENERAL (multi-campo)
+        if filtros:
+            filtros_like = f"%{filtros}%"
+            query = query.filter(
+                or_(
+                    CatalogoModoXTipoClasificacionAika.nombre.ilike(filtros_like),
+                    CatalogoModoXTipoClasificacionAika.modos.has(
+                        ModoAika.nombre.ilike(filtros_like)
+                    ),
+                    CatalogoModoXTipoClasificacionAika.tipoclasificacion.has(
+                        TipoClasificacionModosAika.nombre.ilike(filtros_like)
+                    ),
+                )
+            )
+
+        data = query.offset(skip).limit(limit).all()
+
+        # Construcción del resultado final
         return [
             {
                 "id": rw.id,
@@ -43,19 +99,28 @@ class catalogoService:
                 "id_modo": rw.modos.id if rw.modos else None,
                 "id_tipo_clasificacion_modos": rw.tipoclasificacion.id if rw.tipoclasificacion else None,
                 "modos": rw.modos.nombre if rw.modos else None,
-                "tipoclasificacion": rw.tipoclasificacion.nombre if rw.tipoclasificacion else None
+                "tipoclasificacion": rw.tipoclasificacion.nombre if rw.tipoclasificacion else None,
+                "activo": rw.activo
             }
             for rw in data
         ]
+
     
     
-    def count_catalogo(self, activo: bool | None = None):
-        return (self.db.query(CatalogoModoXTipoClasificacionAika)
-    .filter(CatalogoModoXTipoClasificacionAika.activo == activo).count())
+    def count_catalogo(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(CatalogoModoXTipoClasificacionAika)
+
+        if activo is not None:
+            query = query.filter(CatalogoModoXTipoClasificacionAika.activo == activo)
+
+        if filtros:
+            query = query.filter(CatalogoModoXTipoClasificacionAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_catalogo(self, payload: CatalogoCreate, 
+    def create_catalogo(self, payload: CatalogoCreate, 
                             request: Request, tokenpayload: dict):
         
         
@@ -103,7 +168,7 @@ class catalogoService:
     
     
     
-    async def show(self, catalogo_id: int):
+    def show(self, catalogo_id: int):
         entity = self.db.query(CatalogoModoXTipoClasificacionAika).filter(
             CatalogoModoXTipoClasificacionAika.id == catalogo_id,
                 CatalogoModoXTipoClasificacionAika.activo == True).first()
@@ -115,7 +180,7 @@ class catalogoService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_catalogo(self, catalogo_id: int, 
+    def update_catalogo(self, catalogo_id: int, 
                             payload: CatalogoUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(CatalogoModoXTipoClasificacionAika).filter(
@@ -171,7 +236,7 @@ class catalogoService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_catalogo(self, catalogo_id: int, request: Request, tokenpayload: dict):
+    def delete_catalogo(self, catalogo_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(CatalogoModoXTipoClasificacionAika).filter(
             CatalogoModoXTipoClasificacionAika.id == catalogo_id,
                 CatalogoModoXTipoClasificacionAika.activo == True).first()
@@ -212,7 +277,7 @@ class catalogoService:
     
     
      # servicio para reactivar logicamente un registro
-    async def reactivate(self, catalogo_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, catalogo_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(CatalogoModoXTipoClasificacionAika).filter(
             CatalogoModoXTipoClasificacionAika.id == catalogo_id).first()
         if not datareactivate:

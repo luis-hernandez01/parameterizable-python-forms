@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 
-from src.config.config import get_session
+from src.config.config import (get_db, get_dbs)
 from src.services.rutas_viales_services import RutasVialesService
 from src.schemas.rutas_viales_schema import (PaginacionSchema, 
                                                 RutasCreate,
@@ -13,12 +13,12 @@ from src.utils.jwt_validator_util import verify_jwt_token
 router = APIRouter()
 
 @router.get("/all")
-async def list_all(
+def list_all(
     # de esta manera llamo solamente la primera base de datos
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-    return await RutasVialesService(db).all()
+    return RutasVialesService(db).all()
 
 
 
@@ -27,15 +27,19 @@ async def list_all(
 def lista(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
-    activo: Optional[bool] = Query(None, description="Filtrar por estado activo (true o false)"),
+    activo: Optional[bool] = Query(True, description="Filtrar por estado activo (true o false)"),
+    filtros: Optional[str] = Query(
+        None,
+        description="Filtrar por nombre (búsqueda parcial)"
+    ),
     # de esta manera llamo solamente la primera base de datos
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
     skip = (page - 1) * per_page
     limit = per_page
-    data = RutasVialesService(db).list_rutas(activo=activo, skip=skip, limit=limit)
-    total = RutasVialesService(db).count_rutas(activo=activo)  
+    data = RutasVialesService(db).list_rutas(activo=activo, filtros=filtros, skip=skip, limit=limit)
+    total = RutasVialesService(db).count_rutas(activo=activo, filtros=filtros)  
     # Método adicional para contar todos los datos
     return {
         "items": data,
@@ -50,52 +54,52 @@ def lista(
     
     # endpoin de crear registro
 @router.post("/")
-async def creates(request: Request, 
+def creates(request: Request, 
                         payload: RutasCreate, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await RutasVialesService(dbs).create_rutas(payload, request, tokenpayload)
+    result = RutasVialesService(dbs).create_rutas(payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint de show o ver registro
 @router.get("/{ruta_id}")
-async def get_show(ruta_id: int, 
-                db: Session = Depends(lambda: next(get_session(0))),
+def get_show(ruta_id: int, 
+                db: Session = Depends(get_db),
                 tokenpayload: dict = Depends(verify_jwt_token)):
-    return await RutasVialesService(db).show(ruta_id)
+    return RutasVialesService(db).show(ruta_id)
 
 
 # endpoin para actualizar un registro x
 @router.put("/{ruta_id}")
-async def update(request: Request, 
+def update(request: Request, 
                         ruta_id: int,
                         payload: RutasUpdate,
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await RutasVialesService(dbs).update_rutas(ruta_id, payload, request, tokenpayload)
+    result = RutasVialesService(dbs).update_rutas(ruta_id, payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
 @router.delete("/{ruta_id}")
-async def delete(request: Request, 
+def delete(request: Request, 
                         ruta_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await RutasVialesService(dbs).delete_ruta(ruta_id, request, tokenpayload)
+    result = RutasVialesService(dbs).delete_ruta(ruta_id, request, tokenpayload)
     return {"data": result}
 
 
 
 @router.post("/{ruta_id}/reactivate")
-async def reactivates(request: Request, 
+def reactivates(request: Request, 
                         ruta_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await RutasVialesService(dbs).reactivate(ruta_id, request, tokenpayload)
+    result = RutasVialesService(dbs).reactivate(ruta_id, request, tokenpayload)
     return {"data": result}

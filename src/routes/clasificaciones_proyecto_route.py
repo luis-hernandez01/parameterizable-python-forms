@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 
-from src.config.config import get_session
+from src.config.config import (get_db, get_dbs)
 from src.services.clasificacion_services import clasificacionService
 from src.schemas.clasificacion_proyecto_schema import (PaginacionSchema, 
                                                 ClasificacionProyectoCreate,
@@ -14,12 +14,12 @@ router = APIRouter()
 
 
 @router.get("/all")
-async def list_all(
+def list_all(
     # de esta manera llamo solamente la primera base de datos
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-    return await clasificacionService(db).all()
+    return clasificacionService(db).all()
 
 
 
@@ -28,15 +28,19 @@ async def list_all(
 def list_clasificaciones(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
-    activo: Optional[bool] = Query(None, description="Filtrar por estado activo (true o false)"),
+    activo: Optional[bool] = Query(True, description="Filtrar por estado activo (true o false)"),
+    filtros: Optional[str] = Query(
+        None,
+        description="Filtrar por nombre (búsqueda parcial)"
+    ),
     # de esta manera llamo solamente la primera base de datos
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
     skip = (page - 1) * per_page
     limit = per_page
-    data = clasificacionService(db).list_clasificacion_proyecto(activo=activo, skip=skip, limit=limit)
-    total = clasificacionService(db).count_clasificacion_proyecto(activo=activo)  
+    data = clasificacionService(db).list_clasificacion_proyecto(activo=activo, filtros=filtros, skip=skip, limit=limit)
+    total = clasificacionService(db).count_clasificacion_proyecto(activo=activo, filtros=filtros)  
     # Método adicional para contar todos los datos
     return {
         "items": data,
@@ -51,51 +55,51 @@ def list_clasificaciones(
     
     # endpoin de crear registro
 @router.post("/")
-async def create_Clasificacion(request: Request, 
+def create_Clasificacion(request: Request, 
                         payload: ClasificacionProyectoCreate, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await clasificacionService(dbs).create_clacificacion_proyecto(payload, request, tokenpayload)
+    result = clasificacionService(dbs).create_clacificacion_proyecto(payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint de show o ver registro
 @router.get("/{clasificacion_id}")
-async def get_show(clasificacion_id: int, 
-                db: Session = Depends(lambda: next(get_session(0))),
+def get_show(clasificacion_id: int, 
+                db: Session = Depends(get_db),
                 tokenpayload: dict = Depends(verify_jwt_token)):
-    return await clasificacionService(db).show(clasificacion_id)
+    return clasificacionService(db).show(clasificacion_id)
 
 
 # endpoin para actualizar un registro x
 @router.put("/{clasificacion_id}")
-async def update_clasificacion(request: Request, 
+def update_clasificacion(request: Request, 
                         clasificacion_id: int,
                         payload: ClasificacionProyectoUpdate,
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await clasificacionService(dbs).update_clasificacion_pryecto(clasificacion_id, payload, request, tokenpayload)
+    result = clasificacionService(dbs).update_clasificacion_pryecto(clasificacion_id, payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
 @router.delete("/{clasificacion_id}")
-async def delete_clasificacion(request: Request, 
+def delete_clasificacion(request: Request, 
                         clasificacion_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await clasificacionService(dbs).delete_clasificacion(clasificacion_id, request, tokenpayload)
+    result = clasificacionService(dbs).delete_clasificacion(clasificacion_id, request, tokenpayload)
     return {"data": result}
 
 
 @router.post("/{clasificacion_id}/reactivate")
-async def reactivates(request: Request, 
+def reactivates(request: Request, 
                         clasificacion_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await clasificacionService(dbs).reactivate(clasificacion_id, request, tokenpayload)
+    result = clasificacionService(dbs).reactivate(clasificacion_id, request, tokenpayload)
     return {"data": result}

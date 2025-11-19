@@ -5,35 +5,58 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.clasificacion_proyecto_schema import ClasificacionProyectoCreate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class clasificacionService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(ClasificacionesProyectoAika)
             .filter(ClasificacionesProyectoAika.activo == True)
+            .order_by(asc(ClasificacionesProyectoAika.nombre))
             .all()
         )
     
         
 # servicio para listar  los registros
-    def list_clasificacion_proyecto(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(ClasificacionesProyectoAika).filter(ClasificacionesProyectoAika.activo == activo).offset(skip).limit(limit).all()
-    def count_clasificacion_proyecto(self, activo: bool | None = None):
-        return self.db.query(ClasificacionesProyectoAika).filter(ClasificacionesProyectoAika.activo == activo).count()
+    def list_clasificacion_proyecto(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(ClasificacionesProyectoAika)
+        if activo is not None:
+            query = query.filter(ClasificacionesProyectoAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(ClasificacionesProyectoAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(ClasificacionesProyectoAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
+    
+    def count_clasificacion_proyecto(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(ClasificacionesProyectoAika)
+
+        if activo is not None:
+            query = query.filter(ClasificacionesProyectoAika.activo == activo)
+
+        if filtros:
+            query = query.filter(ClasificacionesProyectoAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_clacificacion_proyecto(self, payload: ClasificacionProyectoCreate, 
+    def create_clacificacion_proyecto(self, payload: ClasificacionProyectoCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(ClasificacionesProyectoAika).filter(
-            ClasificacionesProyectoAika.nombre == payload.nombre,
-                ClasificacionesProyectoAika.activo == True).first()
+            ClasificacionesProyectoAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="La clasificación ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de la clasificación se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -66,7 +89,7 @@ class clasificacionService:
     
     
     
-    async def show(self, clasificacion_id: int):
+    def show(self, clasificacion_id: int):
         entity = self.db.query(ClasificacionesProyectoAika).filter(
             ClasificacionesProyectoAika.id == clasificacion_id,
                 ClasificacionesProyectoAika.activo == True).first()
@@ -78,7 +101,7 @@ class clasificacionService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_clasificacion_pryecto(self, clasificacion_id: int, 
+    def update_clasificacion_pryecto(self, clasificacion_id: int, 
                             payload: ClasificacionProyectoCreate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(ClasificacionesProyectoAika).filter(
@@ -140,7 +163,7 @@ class clasificacionService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_clasificacion(self, clasificacion_id: int, request: Request, tokenpayload: dict):
+    def delete_clasificacion(self, clasificacion_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(ClasificacionesProyectoAika).filter(
             ClasificacionesProyectoAika.id == clasificacion_id,
                 ClasificacionesProyectoAika.activo == True).first()
@@ -182,7 +205,7 @@ class clasificacionService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, clasificacion_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, clasificacion_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(ClasificacionesProyectoAika).filter(
             ClasificacionesProyectoAika.id == clasificacion_id).first()
         if not datareactivate:

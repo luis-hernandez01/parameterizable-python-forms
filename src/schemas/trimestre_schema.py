@@ -5,6 +5,7 @@ from datetime import datetime
 class TrimestreSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 class TrimestreCreate(BaseModel):
     nombre: str

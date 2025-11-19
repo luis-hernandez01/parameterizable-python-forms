@@ -5,34 +5,56 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.rutas_viales_schema import RutasCreate, RutasUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class RutasVialesService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(RutasVialesAika)
             .filter(RutasVialesAika.activo == True)
+            .order_by(asc(RutasVialesAika.nombre))
             .all()
         )
         
 # servicio para listar  los registros
-    def list_rutas(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(RutasVialesAika).filter(RutasVialesAika.activo == activo).offset(skip).limit(limit).all()
-    def count_rutas(self, activo: bool | None = None):
-        return self.db.query(RutasVialesAika).filter(RutasVialesAika.activo == activo).count()
+    def list_rutas(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(RutasVialesAika)
+        if activo is not None:
+            query = query.filter(RutasVialesAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(RutasVialesAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(RutasVialesAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
     
+    def count_rutas(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(RutasVialesAika)
+
+        if activo is not None:
+            query = query.filter(RutasVialesAika.activo == activo)
+
+        if filtros:
+            query = query.filter(RutasVialesAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     # servicio para crear un registro
-    async def create_rutas(self, payload: RutasCreate, 
+    def create_rutas(self, payload: RutasCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(RutasVialesAika).filter(
-            RutasVialesAika.nombre == payload.nombre,
-                RutasVialesAika.activo == True).first()
+            RutasVialesAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="La ruta ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de la ruta se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -66,7 +88,7 @@ class RutasVialesService:
     
     
     
-    async def show(self, ruta_id: int):
+    def show(self, ruta_id: int):
         entity = self.db.query(RutasVialesAika).filter(
             RutasVialesAika.id == ruta_id,
                 RutasVialesAika.activo == True).first()
@@ -78,7 +100,7 @@ class RutasVialesService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_rutas(self, ruta_id: int, 
+    def update_rutas(self, ruta_id: int, 
                             payload: RutasUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(RutasVialesAika).filter(
@@ -141,7 +163,7 @@ class RutasVialesService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_ruta(self, ruta_id: int, request: Request, tokenpayload: dict):
+    def delete_ruta(self, ruta_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(RutasVialesAika).filter(
             RutasVialesAika.id == ruta_id,
                 RutasVialesAika.activo == True).first()
@@ -184,7 +206,7 @@ class RutasVialesService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, ruta_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, ruta_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(RutasVialesAika).filter(
             RutasVialesAika.id == ruta_id).first()
         if not datareactivate:

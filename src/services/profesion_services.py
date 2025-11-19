@@ -5,34 +5,56 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.profesion_schema import ProfesionCreate, ProfesionUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class ProfesionService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(ProfesionAika)
             .filter(ProfesionAika.activo == True)
+            .order_by(asc(ProfesionAika.nombre))
             .all()
         )
         
 # servicio para listar  los registros
-    def list_profesion(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(ProfesionAika).filter(ProfesionAika.activo == activo).offset(skip).limit(limit).all()
-    def count_profesion(self, activo: bool | None = None):
-        return self.db.query(ProfesionAika).filter(ProfesionAika.activo == activo).count()
+    def list_profesion(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(ProfesionAika)
+        if activo is not None:
+            query = query.filter(ProfesionAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(ProfesionAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(ProfesionAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+    
+    def count_profesion(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(ProfesionAika)
+
+        if activo is not None:
+            query = query.filter(ProfesionAika.activo == activo)
+
+        if filtros:
+            query = query.filter(ProfesionAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_profesion(self, payload: ProfesionCreate, 
+    def create_profesion(self, payload: ProfesionCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(ProfesionAika).filter(
-            ProfesionAika.nombre == payload.nombre,
-                ProfesionAika.activo == True).first()
+            ProfesionAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="la profesion ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de la profesion se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -43,9 +65,9 @@ class ProfesionService:
                 entity = modelo(nombre=payload.nombre, area_conocimiento=payload.area_conocimiento,
                                 id_persona=tokenpayload.get("sub"), 
                                 activo=True, created_at=datetime.utcnow())
-                self.db.add(entity)
-                self.db.commit()
-                self.db.refresh(entity)
+                db.add(entity)
+                db.commit()
+                db.refresh(entity)
             except Exception as e:
                 db.rollback()
                 return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
@@ -66,7 +88,7 @@ class ProfesionService:
     
     
     
-    async def show(self, profesion_id: int):
+    def show(self, profesion_id: int):
         entity = self.db.query(ProfesionAika).filter(
             ProfesionAika.id == profesion_id,
                 ProfesionAika.activo == True).first()
@@ -78,7 +100,7 @@ class ProfesionService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_profesion(self, profesion_id: int, 
+    def update_profesion(self, profesion_id: int, 
                             payload: ProfesionUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(ProfesionAika).filter(
@@ -141,7 +163,7 @@ class ProfesionService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_profesion(self, profesion_id: int, request: Request, tokenpayload: dict):
+    def delete_profesion(self, profesion_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(ProfesionAika).filter(
             ProfesionAika.id == profesion_id,
                 ProfesionAika.activo == True).first()
@@ -182,7 +204,7 @@ class ProfesionService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, profesion_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, profesion_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(ProfesionAika).filter(
             ProfesionAika.id == profesion_id).first()
         if not datareactivate:

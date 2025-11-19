@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 
-from src.config.config import get_session
+from src.config.config import (get_db, get_dbs)
 from src.services.categoria_fuentesfijas_services import Categoria_fuentesfijas_Service
 from src.schemas.Categoria_fuentefija_schema import (PaginacionSchema, 
                                                 Categoria_fCreate,
@@ -13,12 +13,12 @@ from src.utils.jwt_validator_util import verify_jwt_token
 router = APIRouter()
 
 @router.get("/all")
-async def list_all(
+def list_all(
     # de esta manera llamo solamente la primera base de datos
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-    return await Categoria_fuentesfijas_Service(db).all()
+    return Categoria_fuentesfijas_Service(db).all()
 
 
 # endpoint de listar data con paginacion incluida
@@ -26,15 +26,19 @@ async def list_all(
 def lista(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
-    activo: Optional[bool] = Query(None, description="Filtrar por estado activo (true o false)"),
+    activo: Optional[bool] = Query(True, description="Filtrar por estado activo (true o false)"),
+    filtros: Optional[str] = Query(
+        None,
+        description="Filtrar por nombre (búsqueda parcial)"
+    ),
     # de esta manera llamo solamente la primera base de datos
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
     skip = (page - 1) * per_page
     limit = per_page
-    data = Categoria_fuentesfijas_Service(db).listar(activo=activo, skip=skip, limit=limit)
-    total = Categoria_fuentesfijas_Service(db).count(activo=activo)  
+    data = Categoria_fuentesfijas_Service(db).listar(activo=activo, filtros=filtros, skip=skip, limit=limit)
+    total = Categoria_fuentesfijas_Service(db).count(activo=activo, filtros=filtros)  
     # Método adicional para contar todos los datos
     return {
         "items": data,
@@ -49,51 +53,51 @@ def lista(
     
     # endpoin de crear registro
 @router.post("/")
-async def creates(request: Request, 
+def creates(request: Request, 
                         payload: Categoria_fCreate, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await Categoria_fuentesfijas_Service(dbs).create(payload, request, tokenpayload)
+    result = Categoria_fuentesfijas_Service(dbs).create(payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint de show o ver registro
 @router.get("/{categoria_id}")
-async def get_show(categoria_id: int, 
-                db: Session = Depends(lambda: next(get_session(0))),
+def get_show(categoria_id: int, 
+                db: Session = Depends(get_db),
                 tokenpayload: dict = Depends(verify_jwt_token)):
-    return await Categoria_fuentesfijas_Service(db).show(categoria_id)
+    return Categoria_fuentesfijas_Service(db).show(categoria_id)
 
 
 # endpoin para actualizar un registro x
 @router.put("/{categoria_id}")
-async def update(request: Request, 
+def update(request: Request, 
                         categoria_id: int,
                         payload: Categoria_fUpdate,
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await Categoria_fuentesfijas_Service(dbs).updates(categoria_id, payload, request, tokenpayload)
+    result = Categoria_fuentesfijas_Service(dbs).updates(categoria_id, payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
 @router.delete("/{categoria_id}")
-async def delete(request: Request, 
+def delete(request: Request, 
                         categoria_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await Categoria_fuentesfijas_Service(dbs).deletes(categoria_id, request, tokenpayload)
+    result = Categoria_fuentesfijas_Service(dbs).deletes(categoria_id, request, tokenpayload)
     return {"data": result}
 
 
 @router.post("/{categoria_id}/reactivate")
-async def reactivates(request: Request, 
+def reactivates(request: Request, 
                         categoria_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await Categoria_fuentesfijas_Service(dbs).reactivate(categoria_id, request, tokenpayload)
+    result = Categoria_fuentesfijas_Service(dbs).reactivate(categoria_id, request, tokenpayload)
     return {"data": result}

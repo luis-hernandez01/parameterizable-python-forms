@@ -8,6 +8,7 @@ class ClasificacionProyectoSchema(BaseModel):
 
 class ClasificacionProyectoCreate(BaseModel):
     nombre: str
+    activo: bool
 
 class ClasificacionProyectoUpdate(BaseModel):
     nombre: str

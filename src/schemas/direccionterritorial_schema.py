@@ -5,6 +5,7 @@ from datetime import datetime
 class DireccionTerritorialSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 class DireccionTerritorialCreate(BaseModel):
     nombre: str

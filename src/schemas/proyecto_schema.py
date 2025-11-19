@@ -18,6 +18,7 @@ class Pyoyectochema(BaseModel):
     fecha_resolucion: Optional[date]
     es_convenio_interadministrativo: Optional[bool] = False
     numero_convenio: Optional[str]
+    activo: bool
 
 class proyectoCreate(BaseModel):
     id_unidad_ejecutora: Optional[int]

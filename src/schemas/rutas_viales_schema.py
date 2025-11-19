@@ -6,6 +6,7 @@ class RutasSchema(BaseModel):
     id: int
     nombre: str
     codigo: Optional[str]
+    activo: bool
 
 class RutasCreate(BaseModel):
     codigo: Optional[str]

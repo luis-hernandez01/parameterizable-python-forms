@@ -5,6 +5,7 @@ from datetime import datetime
 class TipoClasificacionModosSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 class TipoClasificacionModosCreate(BaseModel):
     nombre: str

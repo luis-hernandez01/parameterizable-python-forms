@@ -4,9 +4,10 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from src.models.logs_model import TipoOperacionEnum
-from src.models.Combustible_emisiones_model import (Combustibles_emisionesAika, Combustibles_emisionesWayra)
+from src.models.combustible_emisiones_model import (Combustibles_emisionesAika, Combustibles_emisionesWayra)
 from src.schemas.Combustibles_emisiones_schema import LogEntityRead, CombustibleCreate, CombustibleUpdate
 from src.utils.logs_util import LogUtil, registrar_log
+from sqlalchemy import asc
 
 
 # Servicio para listar las unidades de ejecucion
@@ -15,46 +16,57 @@ class CombustibleService:
         self.db = db
     
     
-    async def all(self):
+    def all(self):
         return (
             self.db.query(Combustibles_emisionesAika)
             .filter(Combustibles_emisionesAika.activo == True)
+            .order_by(asc(Combustibles_emisionesAika.nombre))
             .all()
         )
         
 
     # servicio para listar  los registros
-    def lista(self, skip: int, limit: int, activo: bool | None = None):
-        return (
-            self.db.query(Combustibles_emisionesAika)
-            .filter(Combustibles_emisionesAika.activo == activo)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+    def lista(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(Combustibles_emisionesAika)
+        if activo is not None:
+            query = query.filter(Combustibles_emisionesAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(Combustibles_emisionesAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(Combustibles_emisionesAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
 
-    def count(self, activo: bool | None = None):
-        return (
-            self.db.query(Combustibles_emisionesAika)
-            .filter(Combustibles_emisionesAika.activo == activo)
-            .count()
-        )
+    def count(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(Combustibles_emisionesAika)
+
+        if activo is not None:
+            query = query.filter(Combustibles_emisionesAika.activo == activo)
+
+        if filtros:
+            query = query.filter(Combustibles_emisionesAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
 
 #     # servicio para crear un registro
-    async def create(
+    def create(
         self, payload: CombustibleCreate, request: Request, tokenpayload: dict
     ):
         unidadcreate = (
             self.db[0].query(Combustibles_emisionesAika)
             .filter(
-                Combustibles_emisionesAika.nombre == payload.nombre, Combustibles_emisionesAika.activo == True
+                Combustibles_emisionesAika.nombre == payload.nombre
             )
             .first()
         )
         if unidadcreate:
             return HTTPException(
                 status_code=status.HTTP_304_NOT_MODIFIED,
-                detail="La unidad ejecutora ya existe",
+                detail="Este registro ya se encuentra creado. Se requiere su reactivación.",
             )
         if payload.nombre == "":
             return HTTPException(
@@ -98,7 +110,7 @@ class CombustibleService:
 
         
 
-    async def show(self, combustible_id: int):
+    def show(self, combustible_id: int):
         entity = (
             self.db.query(Combustibles_emisionesAika)
             .filter(Combustibles_emisionesAika.id == combustible_id, Combustibles_emisionesAika.activo == True)
@@ -117,7 +129,7 @@ class CombustibleService:
         return entity
 
 #     # servicio para editar logicamente un registro
-    async def update(
+    def update(
         self,
         combustible_id: int,
         payload: CombustibleUpdate,
@@ -199,7 +211,7 @@ class CombustibleService:
         
 
     # servicio para eliminar logicamente un registro
-    async def delete(self, combustible_id: int, request: Request, tokenpayload: dict):
+    def delete(self, combustible_id: int, request: Request, tokenpayload: dict):
         datadelete = (
             self.db[0].query(Combustibles_emisionesAika)
             .filter(Combustibles_emisionesAika.id == combustible_id, Combustibles_emisionesAika.activo == True)
@@ -249,7 +261,7 @@ class CombustibleService:
 
 
 # servicio para reactivar logicamente un registro
-    async def reactivate(self, combustible_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, combustible_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(Combustibles_emisionesAika).filter(
             Combustibles_emisionesAika.id == combustible_id).first()
         if not datareactivate:

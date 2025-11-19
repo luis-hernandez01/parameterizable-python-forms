@@ -5,34 +5,56 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.Categoria_fuentefija_schema import Categoria_fCreate, Categoria_fUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class Categoria_fuentesfijas_Service:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(Categoria_fuentefijaAika)
             .filter(Categoria_fuentefijaAika.activo == True)
+            .order_by(asc(Categoria_fuentefijaAika.nombre))
             .all()
         )
         
 # servicio para listar  los registros
-    def listar(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(Categoria_fuentefijaAika).filter(Categoria_fuentefijaAika.activo == activo).offset(skip).limit(limit).all()
-    def count(self, activo: bool | None = None):
-        return self.db.query(Categoria_fuentefijaAika).filter(Categoria_fuentefijaAika.activo == activo).count()
+    def listar(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(Categoria_fuentefijaAika)
+        if activo is not None:
+            query = query.filter(Categoria_fuentefijaAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(Categoria_fuentefijaAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(Categoria_fuentefijaAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
+    def count(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(Categoria_fuentefijaAika)
+
+        if activo is not None:
+            query = query.filter(Categoria_fuentefijaAika.activo == activo)
+
+        if filtros:
+            query = query.filter(Categoria_fuentefijaAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create(self, payload: Categoria_fCreate, 
+    def create(self, payload: Categoria_fCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(Categoria_fuentefijaAika).filter(
-            Categoria_fuentefijaAika.nombre == payload.nombre,
-                Categoria_fuentefijaAika.activo == True).first()
+            Categoria_fuentefijaAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El registro ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -65,7 +87,7 @@ class Categoria_fuentesfijas_Service:
     
     
     
-    async def show(self, presenta_id: int):
+    def show(self, presenta_id: int):
         entity = self.db.query(Categoria_fuentefijaAika).filter(
             Categoria_fuentefijaAika.id == presenta_id,
                 Categoria_fuentefijaAika.activo == True).first()
@@ -77,7 +99,7 @@ class Categoria_fuentesfijas_Service:
         return entity
     
     # servicio para editar logicamente un registro
-    async def updates(self, presenta_id: int, 
+    def updates(self, presenta_id: int, 
                             payload: Categoria_fUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(Categoria_fuentefijaAika).filter(
@@ -139,7 +161,7 @@ class Categoria_fuentesfijas_Service:
     
     
     # servicio para eliminar logicamente un registro
-    async def deletes(self, presenta_id: int, request: Request, tokenpayload: dict):
+    def deletes(self, presenta_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(Categoria_fuentefijaAika).filter(
             Categoria_fuentefijaAika.id == presenta_id,
                 Categoria_fuentefijaAika.activo == True).first()
@@ -180,7 +202,7 @@ class Categoria_fuentesfijas_Service:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, presenta_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, presenta_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(Categoria_fuentefijaAika).filter(
             Categoria_fuentefijaAika.id == presenta_id).first()
         if not datareactivate:

@@ -5,13 +5,14 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.contratos_schema import ContratoCreate, ContratoUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class ContratoService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(ContratoAika)
             .filter(ContratoAika.activo == True)
@@ -22,19 +23,18 @@ class ContratoService:
         
 # servicio para listar  los registros
     def list_contrato(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(ContratoAika).filter(ContratoAika.activo == activo).offset(skip).limit(limit).all()
+        return self.db.query(ContratoAika).filter(ContratoAika.activo == activo).order_by(asc(ContratoAika.id)).offset(skip).limit(limit).all()
     def count_contrato(self, activo: bool | None = None):
         return self.db.query(ContratoAika).filter(ContratoAika.activo == activo).count()
     
     
     # servicio para crear un registro
-    async def create_contrato(self, payload: ContratoCreate, 
+    def create_contrato(self, payload: ContratoCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(ContratoAika).filter(
-            ContratoAika.numero_contrato == payload.numero_contrato,
-                ContratoAika.activo == True).first()
+            ContratoAika.numero_contrato == payload.numero_contrato).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El numero de contrato ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.numero_contrato =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre se encuentra vacia ingresa un dato valido")
         if len(payload.numero_contrato) > 100:
@@ -87,7 +87,7 @@ class ContratoService:
     
     
     
-    async def show(self, contrato_id: int):
+    def show(self, contrato_id: int):
         entity = self.db.query(ContratoAika).filter(
             ContratoAika.id == contrato_id,
                 ContratoAika.activo == True).first()
@@ -99,7 +99,7 @@ class ContratoService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_contrato(self, contrato_id: int, 
+    def update_contrato(self, contrato_id: int, 
                             payload: ContratoUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(ContratoAika).filter(
@@ -169,7 +169,7 @@ class ContratoService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_contrato(self, contrato_id: int, request: Request, tokenpayload: dict):
+    def delete_contrato(self, contrato_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(ContratoAika).filter(
             ContratoAika.id == contrato_id,
                 ContratoAika.activo == True).first()
@@ -210,7 +210,7 @@ class ContratoService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, contrato_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, contrato_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(ContratoAika).filter(
             ContratoAika.id == contrato_id).first()
         if not datareactivate:

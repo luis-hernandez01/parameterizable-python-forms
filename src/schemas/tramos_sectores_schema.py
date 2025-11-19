@@ -10,6 +10,7 @@ class TramoSchema(BaseModel):
     nombre: str = Field(..., max_length=255, description="Nombre del tramo o sector")
     kilometraje_inicial: Optional[Decimal] = Field(None, description="Kilometraje inicial del tramo")
     kilometraje_final: Optional[Decimal] = Field(None, description="Kilometraje final del tramo")
+    activo: bool
 
 class TramoCreate(BaseModel):
     id_ruta: Optional[int] = Field(None, description="Ruta a la que pertenece el tramo")

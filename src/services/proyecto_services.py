@@ -5,6 +5,7 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.proyecto_schema import proyectoCreate, ProyectoUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class ProyectoService:
@@ -12,23 +13,45 @@ class ProyectoService:
         self.db = db
         
     
-    async def all(self):
+    def all(self):
         return (
             self.db.query(ProyectoAika)
             .filter(ProyectoAika.activo == True)
+            .order_by(asc(ProyectoAika.nombre_unidades))
             .all()
         )
     
         
 # servicio para listar  los registros
-    def list_proyecto(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(ProyectoAika).filter(ProyectoAika.activo == activo).offset(skip).limit(limit).all()
-    def count_proyecto(self, activo: bool | None = None):
-        return self.db.query(ProyectoAika).filter(ProyectoAika.activo == activo).count()
+    def list_proyecto(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(ProyectoAika)
+        if activo is not None:
+            query = query.filter(ProyectoAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(ProyectoAika.id.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(ProyectoAika.id))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
+    def count_proyecto(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(ProyectoAika)
+
+        if activo is not None:
+            query = query.filter(ProyectoAika.activo == activo)
+
+        if filtros:
+            query = query.filter(ProyectoAika.id.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_proyecto(self, payload: proyectoCreate, 
+    def create_proyecto(self, payload: proyectoCreate, 
                             request: Request, tokenpayload: dict):
         modelos = [ProyectoAika, ProyectoWayra]
         for modelo, db in zip(modelos, self.db):
@@ -77,7 +100,7 @@ class ProyectoService:
     
     
     
-    async def show(self, proyecto_id: int):
+    def show(self, proyecto_id: int):
         entity = self.db.query(ProyectoAika).filter(
             ProyectoAika.id == proyecto_id,
                 ProyectoAika.activo == True).first()
@@ -89,7 +112,7 @@ class ProyectoService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_proyecto(self, proyecto_id: int, 
+    def update_proyecto(self, proyecto_id: int, 
                             payload: ProyectoUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(ProyectoAika).filter(
@@ -154,7 +177,7 @@ class ProyectoService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_proyecto(self, proyecto_id: int, request: Request, tokenpayload: dict):
+    def delete_proyecto(self, proyecto_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(ProyectoAika).filter(
             ProyectoAika.id == proyecto_id,
                 ProyectoAika.activo == True).first()
@@ -195,7 +218,7 @@ class ProyectoService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, proyecto_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, proyecto_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(ProyectoAika).filter(
             ProyectoAika.id == proyecto_id).first()
         if not datareactivate:

@@ -8,6 +8,7 @@ class AlcanceSchema(BaseModel):
 
 class AlcanceCreate(BaseModel):
     nombre: str
+    activo: bool
 
 class AlcanceUpdate(BaseModel):
     nombre: str

@@ -7,7 +7,7 @@ from src.models.logs_model import TipoOperacionEnum
 from src.models.unidad_ejecutora_model import (UnidadEjecutoraAika, UnidadEjecutoraWayra)
 from src.schemas.unidad_ejecutora_schema import LogEntityRead, UnidadEjecutoraCreate
 from src.utils.logs_util import LogUtil, registrar_log
-
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class UnidadEjecutoraService:
@@ -15,46 +15,71 @@ class UnidadEjecutoraService:
         self.db = db
     
     
-    async def all(self):
+    def all(self):
         return (
             self.db.query(UnidadEjecutoraAika)
             .filter(UnidadEjecutoraAika.activo == True)
+            .order_by(asc(UnidadEjecutoraAika.nombre))
             .all()
         )
         
 
     # servicio para listar  los registros
-    def list_unidad_ejecutora(self, skip: int, limit: int, activo: bool | None = None):
-        return (
-            self.db.query(UnidadEjecutoraAika)
-            .filter(UnidadEjecutoraAika.activo == activo)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+    def list_unidad_ejecutora(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(UnidadEjecutoraAika)
+        if activo is not None:
+            query = query.filter(UnidadEjecutoraAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(UnidadEjecutoraAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(UnidadEjecutoraAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+    )
+            
+        # return (
+        #     self.db.query(UnidadEjecutoraAika)
+        #     .filter(UnidadEjecutoraAika.activo == activo)
+        #     .filter(UnidadEjecutoraAika.nombre.ilike(f"%{filtros}%"))
+        #     .order_by(asc(UnidadEjecutoraAika.nombre))
+        #     .offset(skip)
+        #     .limit(limit)
+        #     .all()
+        # )
+        
+    
+    def count_unidad_ejecutora(
+        self,
+        activo: bool | None = None,
+        filtros: str | None = None):
+        query = self.db.query(UnidadEjecutoraAika)
 
-    def count_unidad_ejecutora(self, activo: bool | None = None):
-        return (
-            self.db.query(UnidadEjecutoraAika)
-            .filter(UnidadEjecutoraAika.activo == activo)
-            .count()
-        )
+        if activo is not None:
+            query = query.filter(UnidadEjecutoraAika.activo == activo)
+
+        if filtros:
+            query = query.filter(UnidadEjecutoraAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
 
 #     # servicio para crear un registro
-    async def create_unidad(
+    def create_unidad(
         self, payload: UnidadEjecutoraCreate, request: Request, tokenpayload: dict
     ):
         unidadcreate = (
             self.db[0].query(UnidadEjecutoraAika)
             .filter(
-                UnidadEjecutoraAika.nombre == payload.nombre, UnidadEjecutoraAika.activo == True
+                UnidadEjecutoraAika.nombre == payload.nombre
             )
             .first()
         )
         if unidadcreate:
             return HTTPException(
                 status_code=status.HTTP_304_NOT_MODIFIED,
-                detail="La unidad ejecutora ya existe",
+                detail="Este registro ya se encuentra creado. Se requiere su reactivación.",
             )
         if payload.nombre == "":
             return HTTPException(
@@ -108,7 +133,7 @@ class UnidadEjecutoraService:
 
         
 
-    async def show(self, unidad_id: int):
+    def show(self, unidad_id: int):
         entity = (
             self.db.query(UnidadEjecutoraAika)
             .filter(UnidadEjecutoraAika.id == unidad_id, UnidadEjecutoraAika.activo == True)
@@ -127,7 +152,7 @@ class UnidadEjecutoraService:
         return entity
 
 #     # servicio para editar logicamente un registro
-    async def update_unidad(
+    def update_unidad(
         self,
         unidad_id: int,
         payload: UnidadEjecutoraCreate,
@@ -210,7 +235,7 @@ class UnidadEjecutoraService:
         
 
     # servicio para eliminar logicamente un registro
-    async def delete_unidad(self, unidad_id: int, request: Request, tokenpayload: dict):
+    def delete_unidad(self, unidad_id: int, request: Request, tokenpayload: dict):
         datadelete = (
             self.db[0].query(UnidadEjecutoraAika)
             .filter(UnidadEjecutoraAika.id == unidad_id, UnidadEjecutoraAika.activo == True)
@@ -260,7 +285,7 @@ class UnidadEjecutoraService:
 
 
 # servicio para reactivar logicamente un registro
-    async def reactivate(self, unidad_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, unidad_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(UnidadEjecutoraAika).filter(
             UnidadEjecutoraAika.id == unidad_id).first()
         if not datareactivate:

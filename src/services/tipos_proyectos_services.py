@@ -5,35 +5,58 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.tiposproyectos_schema import TiposproyectosCreate, TiposproyectosUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class TiposProyectosService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(TiposProyectoAika)
             .filter(TiposProyectoAika.activo == True)
+            .order_by(asc(TiposProyectoAika.nombre))
             .all()
         )
     
         
 # servicio para listar  los registros
-    def list_tipos(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(TiposProyectoAika).filter(TiposProyectoAika.activo == activo).offset(skip).limit(limit).all()
-    def count_tipos(self, activo: bool | None = None):
-        return self.db.query(TiposProyectoAika).filter(TiposProyectoAika.activo == activo).count()
+    def list_tipos(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(TiposProyectoAika)
+        if activo is not None:
+            query = query.filter(TiposProyectoAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(TiposProyectoAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(TiposProyectoAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
+    
+    def count_tipos(self, activo: bool | None = None,filtros: str | None = None):
+        query = self.db.query(TiposProyectoAika)
+
+        if activo is not None:
+            query = query.filter(TiposProyectoAika.activo == activo)
+
+        if filtros:
+            query = query.filter(TiposProyectoAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_tipos(self, payload: TiposproyectosCreate, 
+    def create_tipos(self, payload: TiposproyectosCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(TiposProyectoAika).filter(
-            TiposProyectoAika.nombre == payload.nombre,
-                TiposProyectoAika.activo == True).first()
+            TiposProyectoAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El tipo de proyecto ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el tipo de proyecto se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -67,7 +90,7 @@ class TiposProyectosService:
     
     
     
-    async def show(self, tipos_id: int):
+    def show(self, tipos_id: int):
         entity = self.db.query(TiposProyectoAika).filter(
             TiposProyectoAika.id == tipos_id,
                 TiposProyectoAika.activo == True).first()
@@ -79,7 +102,7 @@ class TiposProyectosService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_tipos(self, tipos_id: int, 
+    def update_tipos(self, tipos_id: int, 
                             payload: TiposproyectosUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(TiposProyectoAika).filter(
@@ -142,7 +165,7 @@ class TiposProyectosService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_tipos(self, tipos_id: int, request: Request, tokenpayload: dict):
+    def delete_tipos(self, tipos_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(TiposProyectoAika).filter(
             TiposProyectoAika.id == tipos_id,
                 TiposProyectoAika.activo == True).first()
@@ -183,7 +206,7 @@ class TiposProyectosService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, tipos_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, tipos_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(TiposProyectoAika).filter(
             TiposProyectoAika.id == tipos_id).first()
         if not datareactivate:

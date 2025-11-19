@@ -5,24 +5,39 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.municipio_schema import municipioCreate, MunicipioUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class MunicipioService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self, codigo_departamento):
+    def all(self, codigo_departamento):
         return (
             self.db.query(MunicipioAika)
             .join(DepartamentoAika)
             .filter(DepartamentoAika.codigo == codigo_departamento,
                 DepartamentoAika.activo == True)
+            .order_by(asc(DepartamentoAika.nombre))
             .all()
         )
         
 # servicio para listar  los registros
-    def list_municipio(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(MunicipioAika).filter(MunicipioAika.activo == activo).offset(skip).limit(limit).all()
+    def list_municipio(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(MunicipioAika)
+        if activo is not None:
+            query = query.filter(MunicipioAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(MunicipioAika.nombre_municipio.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(MunicipioAika.nombre_municipio))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
     
     # este codigo comentado es para mostrar el valor del campo nombre
     # de la tabla foranea
@@ -47,19 +62,26 @@ class MunicipioService:
     #         for m in municipios
     #     ]
     
-    def count_municipio(self, activo: bool | None = None):
-        return self.db.query(MunicipioAika).filter(MunicipioAika.activo == activo).count()
+    def count_municipio(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(MunicipioAika)
+
+        if activo is not None:
+            query = query.filter(MunicipioAika.activo == activo)
+
+        if filtros:
+            query = query.filter(MunicipioAika.nombre_municipio.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     
     # servicio para crear un registro
-    async def create_municipio(self, payload: municipioCreate, 
+    def create_municipio(self, payload: municipioCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(MunicipioAika).filter(
-            MunicipioAika.nombre_municipio == payload.nombre_municipio,
-                MunicipioAika.activo == True).first()
+            MunicipioAika.nombre_municipio == payload.nombre_municipio).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El Municipio ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre_municipio =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el Municipio se encuentra vacia ingresa un dato valido")
         if len(payload.nombre_municipio) > 255:
@@ -96,7 +118,7 @@ class MunicipioService:
     
     
     
-    async def show(self, municipio_id: int):
+    def show(self, municipio_id: int):
         entity = self.db.query(MunicipioAika).filter(
             MunicipioAika.id == municipio_id,
                 MunicipioAika.activo == True).first()
@@ -108,7 +130,7 @@ class MunicipioService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_municipio(self, municipio_id: int, 
+    def update_municipio(self, municipio_id: int, 
                             payload: MunicipioUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(MunicipioAika).filter(
@@ -176,7 +198,7 @@ class MunicipioService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_municipio(self, municipio_id: int, request: Request, tokenpayload: dict):
+    def delete_municipio(self, municipio_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(MunicipioAika).filter(
             MunicipioAika.id == municipio_id,
                 MunicipioAika.activo == True).first()
@@ -218,7 +240,7 @@ class MunicipioService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, municipio_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, municipio_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(MunicipioAika).filter(
             MunicipioAika.id == municipio_id).first()
         if not datareactivate:

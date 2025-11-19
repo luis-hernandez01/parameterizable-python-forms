@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 
-from src.config.config import get_session
+from src.config.config import (get_db, get_dbs)
 from src.services.tramo_services import TramoService
 from src.schemas.tramos_sectores_schema import (PaginacionSchema, 
                                                 TramoCreate,
@@ -13,13 +13,13 @@ from src.utils.jwt_validator_util import verify_jwt_token
 router = APIRouter()
 
 @router.get("/all")
-async def list_all(
+def list_all(
     # de esta manera llamo solamente la primera base de datos
     id_ruta: int,
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
-    return await TramoService(db).all(id_ruta)
+    return TramoService(db).all(id_ruta)
 
 
 
@@ -29,14 +29,18 @@ def lista(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     # de esta manera llamo solamente la primera base de datos
-    activo: Optional[bool] = Query(None, description="Filtrar por estado activo (true o false)"),
-    db: Session = Depends(lambda: next(get_session(0))),
+    activo: Optional[bool] = Query(True, description="Filtrar por estado activo (true o false)"),
+    filtros: Optional[str] = Query(
+        None,
+        description="Filtrar por nombre (búsqueda parcial)"
+    ),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token)
 ) -> Dict[str, Any]:
     skip = (page - 1) * per_page
     limit = per_page
-    data = TramoService(db).list_tramo(activo=activo, skip=skip, limit=limit)
-    total = TramoService(db).count_tramo(activo=activo)  
+    data = TramoService(db).list_tramo(activo=activo, filtros=filtros, skip=skip, limit=limit)
+    total = TramoService(db).count_tramo(activo=activo, filtros=filtros)  
     # Método adicional para contar todos los datos
     return {
         "items": data,
@@ -51,52 +55,52 @@ def lista(
     
     # endpoin de crear registro
 @router.post("/")
-async def creates(request: Request, 
+def creates(request: Request, 
                         payload: TramoCreate, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await TramoService(dbs).create_tramo(payload, request, tokenpayload)
+    result = TramoService(dbs).create_tramo(payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint de show o ver registro
 @router.get("/{tramo_id}")
-async def get_show(tramo_id: int,
-                db: Session = Depends(lambda: next(get_session(0))),
+def get_show(tramo_id: int,
+                db: Session = Depends(get_db),
                 tokenpayload: dict = Depends(verify_jwt_token)):
-    return await TramoService(db).show(tramo_id)
+    return TramoService(db).show(tramo_id)
 
 
 # endpoin para actualizar un registro x
 @router.put("/{tramo_id}")
-async def update(request: Request, 
+def update(request: Request, 
                         tramo_id: int,
                         payload: TramoUpdate,
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await TramoService(dbs).update_tramo(tramo_id, payload, request, tokenpayload)
+    result = TramoService(dbs).update_tramo(tramo_id, payload, request, tokenpayload)
     return {"data": result}
 
 
 # endpoint para eliminar un registro logicamente
 @router.delete("/{tramo_id}")
-async def delete(request: Request, 
+def delete(request: Request, 
                         tramo_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await TramoService(dbs).delete_tramo(tramo_id, request, tokenpayload)
+    result = TramoService(dbs).delete_tramo(tramo_id, request, tokenpayload)
     return {"data": result}
 
 
 
 @router.post("/{tramo_id}/reactivate")
-async def reactivates(request: Request, 
+def reactivates(request: Request, 
                         tramo_id: int, 
                         # de esta manera llamo todas las bases de datos existentes
-                        dbs: list[Session] = Depends(lambda: next(get_session())),
+                        dbs: list[Session] = Depends(get_dbs),
                         tokenpayload: dict = Depends(verify_jwt_token)):
-    result = await TramoService(dbs).reactivate(tramo_id, request, tokenpayload)
+    result = TramoService(dbs).reactivate(tramo_id, request, tokenpayload)
     return {"data": result}

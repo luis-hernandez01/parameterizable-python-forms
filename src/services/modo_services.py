@@ -5,13 +5,14 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.modo_schema import ModoCreate, ModoUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class ModoService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self):
+    def all(self):
         return (
             self.db.query(ModoAika)
             .filter(ModoAika.activo == True)
@@ -20,20 +21,40 @@ class ModoService:
     
         
 # servicio para listar  los registros
-    def list_modo(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(ModoAika).filter(ModoAika.activo == activo).offset(skip).limit(limit).all()
-    def count_modo(self, activo: bool | None = None):
-        return self.db.query(ModoAika).filter(ModoAika.activo == activo).count()
+    def list_modo(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(ModoAika)
+        if activo is not None:
+            query = query.filter(ModoAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(ModoAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(ModoAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
+    def count_modo(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(ModoAika)
+
+        if activo is not None:
+            query = query.filter(ModoAika.activo == activo)
+
+        if filtros:
+            query = query.filter(ModoAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_modo(self, payload: ModoCreate, 
+    def create_modo(self, payload: ModoCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(ModoAika).filter(
-            ModoAika.nombre == payload.nombre,
-                ModoAika.activo == True).first()
+            ModoAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El modo ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el modo se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -66,7 +87,7 @@ class ModoService:
     
     
     
-    async def show(self, modo_id: int):
+    def show(self, modo_id: int):
         entity = self.db.query(ModoAika).filter(
             ModoAika.id == modo_id,
                 ModoAika.activo == True).first()
@@ -78,7 +99,7 @@ class ModoService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_modo(self, modo_id: int, 
+    def update_modo(self, modo_id: int, 
                             payload: ModoUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(ModoAika).filter(
@@ -137,7 +158,7 @@ class ModoService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_modo(self, modo_id: int, request: Request, tokenpayload: dict):
+    def delete_modo(self, modo_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(ModoAika).filter(
             ModoAika.id == modo_id,
                 ModoAika.activo == True).first()
@@ -179,7 +200,7 @@ class ModoService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, modo_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, modo_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(ModoAika).filter(
             ModoAika.id == modo_id).first()
         if not datareactivate:

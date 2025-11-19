@@ -5,35 +5,57 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.tramos_sectores_schema import TramoCreate, TramoUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
 
 # Servicio para listar las unidades de ejecucion
 class TramoService:
     def __init__(self, db: Session):
         self.db = db
         
-    async def all(self, id_ruta):
+    def all(self, id_ruta):
         return (
             self.db.query(TramoSectoresAika)
             .filter(TramoSectoresAika.id_ruta == id_ruta,
                     TramoSectoresAika.activo == True)
+            .order_by(asc(TramoSectoresAika.nombre))
             .all()
         )
         
 # servicio para listar  los registros
-    def list_tramo(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(TramoSectoresAika).filter(TramoSectoresAika.activo == activo).offset(skip).limit(limit).all()
-    def count_tramo(self, activo: bool | None = None):
-        return self.db.query(TramoSectoresAika).filter(TramoSectoresAika.activo == activo).count()
+    def list_tramo(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(TramoSectoresAika)
+        if activo is not None:
+            query = query.filter(TramoSectoresAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(TramoSectoresAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(TramoSectoresAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+    
+    def count_tramo(self, activo: bool | None = None,filtros: str | None = None):
+        query = self.db.query(TramoSectoresAika)
+
+        if activo is not None:
+            query = query.filter(TramoSectoresAika.activo == activo)
+
+        if filtros:
+            query = query.filter(TramoSectoresAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
     
     
     # servicio para crear un registro
-    async def create_tramo(self, payload: TramoCreate, 
+    def create_tramo(self, payload: TramoCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(TramoSectoresAika).filter(
-            TramoSectoresAika.nombre == payload.nombre,
-                TramoSectoresAika.activo == True).first()
+            TramoSectoresAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El tramo ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el tramo se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -68,7 +90,7 @@ class TramoService:
     
     
     
-    async def show(self, tramo_id: int):
+    def show(self, tramo_id: int):
         entity = self.db.query(TramoSectoresAika).filter(
             TramoSectoresAika.id == tramo_id,
                 TramoSectoresAika.activo == True).first()
@@ -80,7 +102,7 @@ class TramoService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_tramo(self, tramo_id: int, 
+    def update_tramo(self, tramo_id: int, 
                             payload: TramoUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(TramoSectoresAika).filter(
@@ -147,7 +169,7 @@ class TramoService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_tramo(self, tramo_id: int, request: Request, tokenpayload: dict):
+    def delete_tramo(self, tramo_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(TramoSectoresAika).filter(
             TramoSectoresAika.id == tramo_id,
                 TramoSectoresAika.activo == True).first()
@@ -192,7 +214,7 @@ class TramoService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, tramo_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, tramo_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(TramoSectoresAika).filter(
             TramoSectoresAika.id == tramo_id).first()
         if not datareactivate:

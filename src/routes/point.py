@@ -3,7 +3,7 @@ Endpoints de API para análisis de puntos
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.config.config import get_session
+from src.config.config import (get_db, get_dbs)
 from src.models.schemas import PointCoordinates, APIResponse
 from src.services.point_service import point_service
 from src.utils.jwt_validator_util import verify_jwt_token
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/point", tags=["Point Analysis"])
 @router.post("/analyze", response_model=APIResponse)
 async def analyze_point(
     point_data: PointCoordinates,
-    db: Session = Depends(lambda: next(get_session(0))),
+    db: Session = Depends(get_db),
     tokenpayload: dict = Depends(verify_jwt_token),
 ):
     """

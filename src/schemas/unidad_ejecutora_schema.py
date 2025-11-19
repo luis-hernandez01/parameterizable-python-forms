@@ -8,6 +8,7 @@ class UnidadEjecutoraSchema(BaseModel):
     id: int
     nombre: str
     descripcion: Optional[str]
+    activo: bool
 
 
 class UnidadEjecutoraCreate(BaseModel):

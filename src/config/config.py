@@ -91,3 +91,14 @@ def get_session(
         finally:
             for db in dbs:
                 db.close()
+
+
+
+
+def get_db():
+    # Solo la base de datos índice 0
+    yield from get_session(0)
+
+def get_dbs():
+    # Todas las bases de datos
+    yield from get_session()

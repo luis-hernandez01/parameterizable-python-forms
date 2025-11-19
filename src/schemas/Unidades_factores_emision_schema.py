@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class UnidadFactorSchema(BaseModel):
     id: int
     nombre: str
+    activo: bool
 
 
 class UnidadFactorCreate(BaseModel):

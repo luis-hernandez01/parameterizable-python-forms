@@ -5,34 +5,59 @@ from src.models.logs_model import TipoOperacionEnum
 from src.schemas.departamento_schema import DepartamentoCreate, DepartamentoUpdate, LogEntityRead
 from datetime import datetime
 from src.utils.logs_util import registrar_log, LogUtil
+from sqlalchemy import asc
+
 
 # Servicio para listar las unidades de ejecucion
 class DepartamentoService:
     def __init__(self, db: Session):
         self.db = db
     
-    async def all(self):
+    def all(self):
         return (
             self.db.query(DepartamentoAika)
             .filter(DepartamentoAika.activo == True)
+            .order_by(asc(DepartamentoAika.nombre))
             .all()
         )
         
 # servicio para listar  los registros
-    def list_departamento(self, skip: int, limit: int, activo: bool | None = None):
-        return self.db.query(DepartamentoAika).filter(DepartamentoAika.activo == activo).offset(skip).limit(limit).all()
-    def count_departamento(self, activo: bool | None = None):
-        return self.db.query(DepartamentoAika).filter(DepartamentoAika.activo == activo).count()
+    def list_departamento(self, skip: int, limit: int, filtros: str | None = None,
+                            activo: bool | None = None):
+        query = self.db.query(DepartamentoAika)
+        if activo is not None:
+            query = query.filter(DepartamentoAika.activo == activo)
+        
+        if filtros:
+            query = query.filter(DepartamentoAika.nombre.ilike(f"%{filtros}%"))
+        
+        return ( query.order_by(asc(DepartamentoAika.nombre))
+                .offset(skip)
+                .limit(limit)
+                .all()
+                )
+        
+    
+    def count_departamento(self, activo: bool | None = None, filtros: str | None = None):
+        query = self.db.query(DepartamentoAika)
+
+        if activo is not None:
+            query = query.filter(DepartamentoAika.activo == activo)
+
+        if filtros:
+            query = query.filter(DepartamentoAika.nombre.ilike(f"%{filtros}%"))
+
+        return query.count()
+    
     
     
     # servicio para crear un registro
-    async def create_departamento(self, payload: DepartamentoCreate, 
+    def create_departamento(self, payload: DepartamentoCreate, 
                             request: Request, tokenpayload: dict):
         datacreate = self.db[0].query(DepartamentoAika).filter(
-            DepartamentoAika.nombre == payload.nombre,
-                DepartamentoAika.activo == True).first()
+            DepartamentoAika.nombre == payload.nombre).first()
         if datacreate:
-            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="El departamento ya existe")
+            return HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Este registro ya se encuentra creado. Se requiere su reactivación.")
         if payload.nombre =="":
             return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo nombre de el departamento se encuentra vacia ingresa un dato valido")
         if len(payload.nombre) > 255:
@@ -67,7 +92,7 @@ class DepartamentoService:
     
     
     
-    async def show(self, departamento_id: int):
+    def show(self, departamento_id: int):
         entity = self.db.query(DepartamentoAika).filter(
             DepartamentoAika.id == departamento_id,
                 DepartamentoAika.activo == True).first()
@@ -79,7 +104,7 @@ class DepartamentoService:
         return entity
     
     # servicio para editar logicamente un registro
-    async def update_departamento(self, departamento_id: int, 
+    def update_departamento(self, departamento_id: int, 
                             payload: DepartamentoUpdate, 
                             request: Request, tokenpayload: dict):
         dataupdate = self.db[0].query(DepartamentoAika).filter(
@@ -143,7 +168,7 @@ class DepartamentoService:
     
     
     # servicio para eliminar logicamente un registro
-    async def delete_departamento(self, departamento_id: int, request: Request, tokenpayload: dict):
+    def delete_departamento(self, departamento_id: int, request: Request, tokenpayload: dict):
         datadelete = self.db[0].query(DepartamentoAika).filter(
             DepartamentoAika.id == departamento_id,
                 DepartamentoAika.activo == True).first()
@@ -184,7 +209,7 @@ class DepartamentoService:
     
     
     # servicio para reactivar logicamente un registro
-    async def reactivate(self, departamento_id: int, request: Request, tokenpayload: dict):
+    def reactivate(self, departamento_id: int, request: Request, tokenpayload: dict):
         datareactivate = self.db[0].query(DepartamentoAika).filter(
             DepartamentoAika.id == departamento_id).first()
         if not datareactivate:
